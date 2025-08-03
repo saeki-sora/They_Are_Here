@@ -38,3 +38,6 @@ Release/
 # Directories to ignore
 [Bb]in/
 [Oo]bj/
+
+# Shader compiled outputs
+*.cso
