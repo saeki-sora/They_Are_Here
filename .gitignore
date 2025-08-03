@@ -10,3 +10,31 @@
 *.log
 *.cache
 *.db
+
+# Visual Studio build folders
+x64/
+Debug/
+Release/
+
+# ビルド中間ファイル・ログ
+*.tlog
+*.ilk
+*.idb
+*.pdb
+*.lastbuildstate
+*.exe.recipe
+
+# その他不要な出力
+*.iobj
+*.ipdb
+*.obj
+*.exp
+*.lib
+
+# 一時生成ファイル（.ipch 以外も）
+*.tmp
+*.bak
+
+# Directories to ignore
+[Bb]in/
+[Oo]bj/
