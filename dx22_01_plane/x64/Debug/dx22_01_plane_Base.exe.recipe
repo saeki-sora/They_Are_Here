@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>C:\Users\soret\Downloads\dx22_01_plane\dx22_01_plane_Base\x64\Debug\dx22_01_plane_Base.exe</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles>
+    <ContentFile>
+      <FullPath>C:\Users\soret\Downloads\dx22_01_plane\dx22_01_plane_Base\x64\Debug\litTexturePS.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Users\soret\Downloads\dx22_01_plane\dx22_01_plane_Base\x64\Debug\litTextureVS.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Users\soret\Downloads\dx22_01_plane\dx22_01_plane_Base\x64\Debug\unlitTexturePS.cso</FullPath>
+    </ContentFile>
+    <ContentFile>
+      <FullPath>C:\Users\soret\Downloads\dx22_01_plane\dx22_01_plane_Base\x64\Debug\unlitTextureVS.cso</FullPath>
+    </ContentFile>
+  </ContentFiles>
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

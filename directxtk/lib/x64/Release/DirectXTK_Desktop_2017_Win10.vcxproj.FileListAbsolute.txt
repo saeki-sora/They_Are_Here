@@ -1,0 +1,1 @@
+C:\2023\08-directxtk\DirectXTK-master\DirectXTK-master\Bin\Desktop_2017_Win10\x64\Release\DirectXTK.lib
