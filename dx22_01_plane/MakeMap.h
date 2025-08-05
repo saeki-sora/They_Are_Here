@@ -10,8 +10,8 @@
 namespace MAP {
 
 	struct Config {
-		static constexpr std::uint16_t MaxX = 11;//横セル数（X方向）必ず奇数にすること
-		static constexpr std::uint16_t MaxY = 11;//縦セル数（Y方向）
+		static constexpr std::uint16_t MaxX = 31;//横セル数（X方向）必ず奇数にすること
+		static constexpr std::uint16_t MaxY = 31;//縦セル数（Y方向）
 		static constexpr float  BLOCK_SIZE = 10.0f; //１セルあたりの物理サイズ
 	};
 };

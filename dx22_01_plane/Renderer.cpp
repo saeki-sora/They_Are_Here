@@ -34,6 +34,15 @@ DirectX::SimpleMath::Matrix Renderer::m_ViewMatrix = DirectX::SimpleMath::Matrix
 DirectX::SimpleMath::Matrix Renderer::m_ProjectionMatrix = DirectX::SimpleMath::Matrix::Identity;
 DirectX::SimpleMath::Matrix Renderer::m_WorldMatrix = DirectX::SimpleMath::Matrix::Identity;
 
+namespace 
+{
+	struct StateCache {
+		ID3D11VertexShader* VS = nullptr;
+		ID3D11PixelShader* PS = nullptr;
+		ID3D11InputLayout* IL = nullptr;
+	} g_state;
+}
+
 // ImGUI_Manager のインスタンス
 //ImGUI_Manager g_ImGuiManager;
 
@@ -265,6 +274,39 @@ void Renderer::Init()
 	// ImGUIの初期化
 	//g_ImGuiManager.InitImGui(Application::GetWindow(), m_Device, m_DeviceContext);
 	
+}
+
+
+//=======================================
+//描画状態の設定
+//=======================================
+void Renderer::BindVS(ID3D11VertexShader* vs)
+{
+	if (g_state.VS != vs) {
+		m_DeviceContext->VSSetShader(vs, nullptr, 0);
+		g_state.VS = vs;
+	}
+}
+
+void Renderer::BindPS(ID3D11PixelShader* ps) 
+{
+	if (g_state.PS != ps) {
+		m_DeviceContext->PSSetShader(ps, nullptr, 0);
+		g_state.PS = ps;
+	}
+}
+
+void Renderer::BindIL(ID3D11InputLayout* il)
+{
+	if (g_state.IL != il) {
+		m_DeviceContext->IASetInputLayout(il);
+		g_state.IL = il;
+	}
+}
+
+void Renderer::ResetStateCache()
+{
+	g_state = {};
 }
 
 //=======================================

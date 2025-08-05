@@ -64,6 +64,7 @@ struct MATERIAL
 	BOOL Dummy[2];//アラインメントの都合でダミー
 };
 
+
 //-----------------------------------------------------------------------------
 //Rendererクラス
 //-----------------------------------------------------------------------------
@@ -127,6 +128,12 @@ public:
 	static void SetLight(LIGHT Light);
 	static void SetMaterial(MATERIAL Material);
 	static void SetUV(float u, float v, float uw, float vh);
+
+	static void BindVS(ID3D11VertexShader* vs);// シェーダーのバインド
+	static void BindPS(ID3D11PixelShader* ps);
+	static void BindIL(ID3D11InputLayout* il);
+	static void ResetStateCache(); // シーン切替などでキャッシュ初期化
+
 	//=============================================================================
 	// ブレンド ステート設定
 	//=============================================================================
