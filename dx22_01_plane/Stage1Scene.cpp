@@ -2,10 +2,10 @@
 #include "Game.h"
 #include "GolfBall.h"
 #include"VisualObject.h"
-#include"Arrow.h"
 #include"Pole.h"
 #include"Block.h"
 #include"Skybox.h"
+#include "Player.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -34,13 +34,13 @@ void Stage1Scene::Init()
 
 	m_MakeMap.Create(); // マップ生成クラスの初期化
 
-
+	//m_MySceneObjects.emplace_back(Game::GetInstance().AddObject <Player>()); // プレイヤーオブジェクトを追加
 }
 
 //更新
 void Stage1Scene::Update()
 {
-	 //Rキーを押してリザルトへ
+	//Rキーを押してリザルトへ
 	if (Input::GetKeyTrigger(VK_R))
 	{
 		Game::GetInstance().ChangeScene(SceneName::RESULT);

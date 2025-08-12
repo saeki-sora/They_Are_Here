@@ -3,7 +3,7 @@
 #include "Application.h"
 #include"input.h"
 #include"Game.h"
-#include"GolfBall.h"
+#include "Player.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -19,12 +19,12 @@ void Camera::Init()
 	m_MouseSensitivity = 0.005f;  // マウス感度
 	m_MouseCaptured = true;       // 初期状態はマウスキャプチャON
 	m_EscKeyPressed = false;      // ESCキーフラグ初期化
-	m_Velocity = Vector3(0.0f, 0.0f, 0.0f);
-	m_Collider.size = Vector3(1.0f, 2.0f, 0.0f);
+	m_CameraOffset = Vector3(0.0f, 10.0f, 0.0f); // カメラのオフセット（プレイヤーからの相対位置）
+
 
 	// デフォルトカーソルを保存
 	m_DefaultCursor = LoadCursor(NULL, IDC_ARROW);
-	
+
 	// マウスカーソルを非表示にする
 	while (ShowCursor(FALSE) >= 0);
 
@@ -35,7 +35,6 @@ void Camera::Init()
 //=======================================
 void Camera::Update()
 {
-	m_Collider.position = m_Position; //カメラの位置をコライダーに設定
 
 	// ESCキーでマウスキャプチャの切り替えと終了確認
 	bool escKeyCurrentlyPressed = Input::GetKeyPress(VK_ESCAPE);
@@ -67,68 +66,70 @@ void Camera::Update()
 		SetCursor(NULL);
 	}
 
-	// マウスキャプチャ状態の時のみマウス操作を処理
-	if (m_MouseCaptured)
+	//// マウスキャプチャ状態の時のみマウス操作を処理
+	//if (m_MouseCaptured)
+	//{
+	//	// マウスの移動量を取得
+	//	int mouseX, mouseY;
+	//	Input::GetMouseMove(&mouseX, &mouseY);
+
+	//	// マウスの移動量からカメラの回転を更新
+	//	m_Yaw += mouseX * m_MouseSensitivity;    // 水平回転
+	//	m_Pitch -= mouseY * m_MouseSensitivity;  // 垂直回転（Y軸は反転）
+
+	//	// ピッチ角度を制限（真上・真下を向きすぎないよう制限）
+	//	const float maxPitch = DirectX::XM_PI / 2.0f - 0.1f; // 約89度
+	//	if (m_Pitch > maxPitch) m_Pitch = maxPitch;
+	//	if (m_Pitch < -maxPitch) m_Pitch = -maxPitch;
+	//}
+
+	//// カメラの前方向ベクトルを計算（球面座標系から直交座標系へ変換）
+	//Vector3 forward;
+	//forward.x = cos(m_Pitch) * sin(m_Yaw);
+	//forward.y = sin(m_Pitch);
+	//forward.z = cos(m_Pitch) * cos(m_Yaw);
+	//forward.Normalize();
+
+	//// 右方向ベクトルを計算
+	//Vector3 right = Vector3(cos(m_Yaw), 0.0f, -sin(m_Yaw));
+	//right.Normalize();
+
+	//// WASDでカメラの移動
+	//Vector3 moveVector = Vector3(0.0f, 0.0f, 0.0f);
+	//const float moveSpeed = 0.5f;
+
+	//if (Input::GetKeyPress('W'))
+	//{
+	//	moveVector += forward * moveSpeed;
+	//}
+	//if (Input::GetKeyPress('S'))
+	//{
+	//	moveVector -= forward * moveSpeed;
+	//}
+	//if (Input::GetKeyPress('A'))
+	//{
+	//	moveVector -= right * moveSpeed;
+	//}
+	//if (Input::GetKeyPress('D'))
+	//{
+	//	moveVector += right * moveSpeed;
+	//}
+	//if (Input::GetKeyPress('Q')) // 上昇
+	//{
+	//	moveVector.y += moveSpeed;
+	//}
+	//if (Input::GetKeyPress('E')) // 下降
+	//{
+	//	moveVector.y -= moveSpeed;
+	//}
+
+    // カメラの位置を更新
+	if (auto player = Game::GetInstance().FindObject<Player>().lock())
 	{
-		// マウスの移動量を取得
-		int mouseX, mouseY;
-		Input::GetMouseMove(&mouseX, &mouseY);
-
-		// マウスの移動量からカメラの回転を更新
-		m_Yaw += mouseX * m_MouseSensitivity;    // 水平回転
-		m_Pitch -= mouseY * m_MouseSensitivity;  // 垂直回転（Y軸は反転）
-
-		// ピッチ角度を制限（真上・真下を向きすぎないよう制限）
-		const float maxPitch = DirectX::XM_PI / 2.0f - 0.1f; // 約89度
-		if (m_Pitch > maxPitch) m_Pitch = maxPitch;
-		if (m_Pitch < -maxPitch) m_Pitch = -maxPitch;
+		player->SetMouseCaptured(m_MouseCaptured);// プレイヤーのマウスキャプチャ状態をカメラと同期
+		m_Position = player->GetPosition() + m_CameraOffset;// カメラの位置をプレイヤーの位置にオフセットを加えた位置に設定
+		m_Target = (player->GetPosition() + player->GetForward());
 	}
-
-	// カメラの前方向ベクトルを計算（球面座標系から直交座標系へ変換）
-	Vector3 forward;
-	forward.x = cos(m_Pitch) * sin(m_Yaw);
-	forward.y = sin(m_Pitch);
-	forward.z = cos(m_Pitch) * cos(m_Yaw);
-	forward.Normalize();
-
-	// 右方向ベクトルを計算
-	Vector3 right = Vector3(cos(m_Yaw), 0.0f, -sin(m_Yaw));
-	right.Normalize();
-
-	// WASDでカメラの移動
-	Vector3 moveVector = Vector3(0.0f, 0.0f, 0.0f);
-	const float moveSpeed = 0.5f;
-
-	if (Input::GetKeyPress('W'))
-	{
-		moveVector += forward * moveSpeed;
-	}
-	if (Input::GetKeyPress('S'))
-	{
-		moveVector -= forward * moveSpeed;
-	}
-	if (Input::GetKeyPress('A'))
-	{
-		moveVector -= right * moveSpeed;
-	}
-	if (Input::GetKeyPress('D'))
-	{
-		moveVector += right * moveSpeed;
-	}
-	if (Input::GetKeyPress('Q')) // 上昇
-	{
-		moveVector.y += moveSpeed;
-	}
-	if (Input::GetKeyPress('E')) // 下降
-	{
-		moveVector.y -= moveSpeed;
-	}
-
-	// カメラの位置を更新
-	m_Position += moveVector;
-
-	// ターゲット位置を計算（カメラ位置 + 前方向）
-	m_Target = m_Position + forward;
 
 }
 

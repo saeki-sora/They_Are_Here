@@ -15,15 +15,13 @@ protected:
 	DirectX::SimpleMath::Matrix m_ProjectionMatrix;
 	DirectX::SimpleMath::Vector3	m_Target{};//カメラの注視点
 
-	// 一人称視点用の回転角度
-	float m_Yaw = 0.0f;          // 水平回転角度（ヨー）
-	float m_Pitch = 0.0f;        // 垂直回転角度（ピッチ）
-	float m_MouseSensitivity = 0.005f;  // マウス感度
-	bool m_MouseCaptured = true; // マウスキャプチャ状態
-	bool m_EscKeyPressed = false; // ESCキーが押されたかのフラグ
+	float m_Yaw = 0.0f;         // 水平回転角度（ヨー）
+	float m_Pitch = 0.0f;         // 垂直回転角度（ピッチ）
+	float m_MouseSensitivity = 0.005f;     // マウス感度
+	bool  m_MouseCaptured = true;         // マウスキャプチャ状態
+	bool  m_EscKeyPressed = false;        // ESCキーが押されたかのフラグ
+	Vector3 m_CameraOffset; // カメラのオフセット（プレイヤーからの相対位置）
 
-	DirectX::SimpleMath::Vector3 m_Velocity{};//移動速度
-	Collider m_Collider;//当たり判定
 
 private:
 
@@ -40,11 +38,13 @@ public:
 	DirectX::SimpleMath::Vector3 GetPosition() const { return m_Position; }
 	DirectX::SimpleMath::Matrix GetViewMatrix()const { return m_ViewMatrix; }
 	DirectX::SimpleMath::Matrix GetProjectionMatrix()const { return m_ProjectionMatrix; }
-
-	// マウス感度を設定するメソッド
+	
+	//カメラの感度を設定するメソッド
 	void SetMouseSensitivity(float sensitivity) { m_MouseSensitivity = sensitivity; }
 	float GetMouseSensitivity() const { return m_MouseSensitivity; }
 
 	// マウスキャプチャ状態を取得
 	bool IsMouseCaptured() const { return m_MouseCaptured; }
+
+	void SetCameraOffset(const Vector3& offset) { m_CameraOffset = offset; }
 };

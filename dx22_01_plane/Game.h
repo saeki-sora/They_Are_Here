@@ -2,6 +2,11 @@
 #include <iostream>
 #include <utility> 
 #include <random>
+#include <vector>
+#include <memory>
+#include <algorithm> 
+#include <typeindex>
+
 
 #include "Camera.h"
 #include "Input.h"
@@ -31,6 +36,16 @@ private:
 	std::vector<std::shared_ptr<Object>> m_Objects; // オブジェクト
 	std::unique_ptr<Input> m_Input;  // 入力処理
 	std::unique_ptr<Camera> m_MainCamera; // カメラ
+
+	// 型別キャッシュ：型情報をキーとして、その型のオブジェクト配列を保存
+	mutable std::unordered_map<std::type_index, std::vector<Object*>> m_TypeCache;
+	// キャッシュが有効かどうかのフラグ
+	mutable bool m_CacheValid = false;
+
+	void UpdateTypeCache() const; // 型別キャッシュを更新する
+
+	void InvalidateCache(){m_CacheValid = false;}// キャッシュを無効化する
+
 
 public:
 
@@ -77,9 +92,21 @@ public:
 		return newObjectPtr;
 	}
 
+	// オブジェクトを取得する
+	template<class T>
+	std::weak_ptr<T> FindObject()
+	{
+		for (auto& o : m_Objects) {
+			if (auto derivedObj = std::dynamic_pointer_cast<T>(o)) {
+				return derivedObj;
+			}
+		}
+		return std::weak_ptr<T>{}; // 空のweak_ptrを返す
+	}
+
 
 	// オブジェクトを取得する
-	template<class T> std::vector<T*> GetObjects()
+	template<class T> std::vector<T*> FindObjects()
 	{
 		std::vector<T*> res;
 		for (auto& o : m_Objects) {
