@@ -19,6 +19,7 @@ private:
 	Texture m_Texture;//テクスチャ
 	std::unique_ptr<Material> m_Material; //マテリアル
 
+	float m_Pitch; // 垂直回転角度（ピッチ）
 	Vector3 m_Forward; // 前方ベクトル
 
 	float m_MoveSpeed; // 移動速度
@@ -44,6 +45,15 @@ public:
 
 	Vector3 GetPosition() const override { return m_Position; } // ポジションの取得
 	void SetPosition(const DirectX::SimpleMath::Vector3& pos) { m_Position = pos; }
+
+	Vector3 GetRotation() const { return m_Rotation; }// 回転の取得
+	void SetRotation(const Vector3& rotation) { m_Rotation = rotation; }
+
+	float GetYawRotation() const { return m_Rotation.y; } // 水平回転角度（ヨー）の取得
+	void SetYawRotation(float yaw) { m_Rotation.y = yaw; }
+
+	float GetPitch() const { return m_Pitch; }// 垂直回転角度（ピッチ）の取得
+	void SetPitch(float pitch) { m_Pitch = pitch; }
 
 	// マウス感度を設定するメソッド
 	void SetMouseSensitivity(float sensitivity) { m_MouseSensitivity = sensitivity; }

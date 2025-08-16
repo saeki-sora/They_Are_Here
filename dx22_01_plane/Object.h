@@ -47,3 +47,4 @@ public:
 	virtual bool Is3D() const { return true; } //オブジェクトタイプ。デフォルトは3D
 
 };
+

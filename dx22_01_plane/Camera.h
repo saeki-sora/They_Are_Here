@@ -3,6 +3,8 @@
 #include<vector>
 #include"Collider.h"
 #include"Terrain.h"
+
+using namespace DirectX::SimpleMath;
 //-----------------------------------------------------------------------------
 //CameraƒNƒ‰ƒX
 //-----------------------------------------------------------------------------

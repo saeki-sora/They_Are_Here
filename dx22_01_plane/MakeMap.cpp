@@ -3,7 +3,7 @@
 #include"Game.h"
 #include"Block.h"
 #include"Pole.h"
-
+#include "Player.h"
 #include <cassert>
 
 
@@ -320,8 +320,9 @@ void MakeMap::Set_Start_Goal() {
 				float posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * StartY));
 				float posY = 0.0f; // 高さ
 
-				Vector3 cameraPos(posX, posY, posZ);
-				Game::GetInstance().GetMainCamera().SetPosition(cameraPos);
+				//プレイヤー生成
+				Vector3 playerPos(posX, posY, posZ);
+				Game::GetInstance().AddObject<Player>(playerPos, { 1.0f, 0.3f, 1.0f });
 
 				//ゴールの位置を設定
 				posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * GoalX));

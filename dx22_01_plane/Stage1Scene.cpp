@@ -34,7 +34,8 @@ void Stage1Scene::Init()
 
 	m_MakeMap.Create(); // マップ生成クラスの初期化
 
-	//m_MySceneObjects.emplace_back(Game::GetInstance().AddObject <Player>()); // プレイヤーオブジェクトを追加
+
+
 }
 
 //更新
