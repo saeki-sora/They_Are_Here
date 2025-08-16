@@ -132,9 +132,6 @@
     <ClCompile Include="Terrain.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="Collider.cpp">
-      <Filter>ソース ファイル\Collider</Filter>
-    </ClCompile>
     <ClCompile Include="SimpleBoxCollider.cpp">
       <Filter>ソース ファイル\Collider</Filter>
     </ClCompile>
@@ -193,9 +190,6 @@
     </ClInclude>
     <ClInclude Include="TitleScene.h">
       <Filter>ヘッダー ファイル\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Collider.h">
-      <Filter>ヘッダー ファイル\Collider</Filter>
     </ClInclude>
     <ClInclude Include="SimpleBoxCollider.h">
       <Filter>ヘッダー ファイル\Collider</Filter>

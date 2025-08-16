@@ -1,6 +1,7 @@
 #pragma once
 #include "ColliderObject.h"
 #include <vector>
+#include <memory>
 
 class CollisionManager
 {
