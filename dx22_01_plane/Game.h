@@ -6,18 +6,19 @@
 #include <memory>
 #include <algorithm> 
 #include <typeindex>
-
-
+#include <unordered_map>
 #include "Camera.h"
 #include "Input.h"
 #include "TitleScene.h"
 #include "Stage1Scene.h"
 #include "ResultScene.h"
 #include "Object.h"
+
 using namespace DirectX::SimpleMath;
 
-// シングルトンパターンのゲームクラス
+//シングルトンパターンでゲームクラスを定義
 
+// シーン名を列挙型で定義
 enum class SceneName {
 	TITLE,
 	STAGE1,
@@ -27,56 +28,47 @@ enum class SceneName {
 class Game
 {
 private:
-
 	Game(); // コンストラクタ
 	~Game(); // デストラクタ
-
 
 	std::unique_ptr<Scene> m_Scene; // シーン
 	std::vector<std::shared_ptr<Object>> m_Objects; // オブジェクト
 	std::unique_ptr<Input> m_Input;  // 入力処理
 	std::unique_ptr<Camera> m_MainCamera; // カメラ
 
-	// 型別キャッシュ：型情報をキーとして、その型のオブジェクト配列を保存
-	mutable std::unordered_map<std::type_index, std::vector<Object*>> m_TypeCache;
-	// キャッシュが有効かどうかのフラグ
+	// キャッシュ無効化フラグ（グローバル）
 	mutable bool m_CacheValid = false;
 
-	void UpdateTypeCache() const; // 型別キャッシュを更新する
-
-	void InvalidateCache(){m_CacheValid = false;}// キャッシュを無効化する
-
+	void InvalidateCache() { m_CacheValid = false; } // キャッシュを無効化する
+	void CleanupDeadObjects(); // 削除されたオブジェクトのクリーンアップ
 
 public:
-
 	static Game& GetInstance();
 
 	// コピー禁止
 	Game(const Game&) = delete;
 	Game& operator=(const Game&) = delete;
 
-	void Init(); // 初期化
-	void Update(); // 更新
-	void Draw(); // 描画
-	void Uninit(); // 終了処理
-
+	void Init();
+	void Update(); 
+	void Draw();
+	void Uninit();
 	void ChangeScene(SceneName sName); // シーンを変更
-	void DeleteObject(std::weak_ptr<Object> weak_pt); // オブジェクトを削除する(weak_ptrを受け取る)
+
+	// オブジェクトの管理
+	void DeleteObject(std::weak_ptr<Object> weak_pt); // オブジェクトを削除する
 	void DeleteAllObject(); // オブジェクトをすべて削除する
-
 	Camera& GetMainCamera() { return *m_MainCamera; } // カメラ取得
-
 
 	// オブジェクトを追加する
 	template<class T>
 	std::weak_ptr<T> AddObject()
 	{
-		// TがObjectの派生クラスであることを確認
 		static_assert(std::is_base_of<Object, T>::value, "Game::AddObject T must be an Object");
-
 		auto newObjectPtr = std::make_shared<T>();
 		m_Objects.emplace_back(newObjectPtr);
 		newObjectPtr->Init();
+		InvalidateCache(); // キャッシュ無効化
 		return newObjectPtr;
 	}
 
@@ -85,36 +77,65 @@ public:
 	std::weak_ptr<T> AddObject(const Vector3& pos, const Vector3& size)
 	{
 		static_assert(std::is_base_of<Object, T>::value, "Game::AddObject T must be an Object");
-
 		auto newObjectPtr = std::make_shared<T>(pos, size);
 		m_Objects.emplace_back(newObjectPtr);
 		newObjectPtr->Init();
+		InvalidateCache(); // キャッシュ無効化
 		return newObjectPtr;
 	}
 
-	// オブジェクトを取得する
+	// オブジェクトを取得する（最初の一つ）
 	template<class T>
 	std::weak_ptr<T> FindObject()
 	{
-		for (auto& o : m_Objects) {
-			if (auto derivedObj = std::dynamic_pointer_cast<T>(o)) {
+		for (auto& o : m_Objects) 
+		{
+			if (auto derivedObj = std::dynamic_pointer_cast<T>(o))
+			{
 				return derivedObj;
 			}
 		}
-		return std::weak_ptr<T>{}; // 空のweak_ptrを返す
+		return std::weak_ptr<T>{}; // ない場合は空のweak_ptrを返す
 	}
 
-
-	// オブジェクトを取得する
-	template<class T> std::vector<T*> FindObjects()
+	// 特定の型のオブジェクトをすべて取得する（キャッシュ付き）
+	template<class T>
+	std::vector<std::weak_ptr<T>> FindAllObjects() const
 	{
-		std::vector<T*> res;
-		for (auto& o : m_Objects) {
-			// dynamic_castで型チェック
-			if (T* derivedObj = dynamic_cast<T*>(o.get())) {
-				res.emplace_back(derivedObj);
+		static_assert(std::is_base_of<Object, T>::value, "Game::FindAllObjects T must be an Object");
+
+		// 型ごとの静的キャッシュ
+		static std::vector<std::weak_ptr<T>> cachedResults;
+		static size_t lastObjectCount = 0;
+		static bool lastCacheValid = false;
+
+		// キャッシュが無効、またはオブジェクト数が変わった場合のみ再計算
+		if (!lastCacheValid || m_Objects.size() != lastObjectCount || !m_CacheValid)
+		{
+			cachedResults.clear();
+
+			// 型マッチングして追加
+			for (const auto& obj : m_Objects) 
+			{
+				if (auto derivedObj = std::dynamic_pointer_cast<T>(obj))
+				{
+					cachedResults.emplace_back(derivedObj);
+				}
 			}
+
+			// 期限切れのweak_ptrを除去
+			cachedResults.erase(
+				std::remove_if(cachedResults.begin(), cachedResults.end(),
+					[](const std::weak_ptr<T>& weak) {
+						return weak.expired();
+					}),
+				cachedResults.end()
+			);
+
+			lastObjectCount = m_Objects.size();
+			lastCacheValid = true;
 		}
-		return res;
+
+		return cachedResults;// キャッシュされた結果を返す
 	}
 };

@@ -1,5 +1,6 @@
 #include "SimpleBoxCollider.h"
 #include"Renderer.h"
+#include "Camera.h"
 
 #include <SimpleMath.h>
 #include <DirectXColors.h>
@@ -7,14 +8,21 @@
 #include <VertexTypes.h>
 #include <CommonStates.h>
 #include <Effects.h>
+#include <d3d11.h>
+#include <iostream>
+
 
 using namespace DirectX;
 using namespace DirectX::SimpleMath;
+using Microsoft::WRL::ComPtr;
 
-// グローバル変数の宣言
-std::unique_ptr<PrimitiveBatch<VertexPositionColor>> g_pBatch;
-std::unique_ptr<BasicEffect>                        g_pEffect;
-std::unique_ptr<CommonStates>                       g_pStates;
+//変数の定義
+std::unique_ptr<PrimitiveBatch<VertexPositionColor>> SimpleBoxCollider::m_Batch;
+std::unique_ptr<BasicEffect> SimpleBoxCollider::m_Effect;
+std::unique_ptr<CommonStates> SimpleBoxCollider::m_States;
+ComPtr<ID3D11InputLayout> SimpleBoxCollider::m_InputLayout;
+bool SimpleBoxCollider::m_initialized = false;
+
 
 
 bool SimpleBoxCollider::CheckCollision(const SimpleBoxCollider& other) const
@@ -26,68 +34,195 @@ bool SimpleBoxCollider::CheckCollision(const SimpleBoxCollider& other) const
 		(abs(center.z - other.center.z) <= (size.z + other.size.z) * 0.5f);
 }
 
+
+
 // デバッグ用のコライダービジュアルを描画する関数の初期化
 void SimpleBoxCollider::InitDebugDraw(ID3D11Device* device, ID3D11DeviceContext* ctx)
 {
-	if (g_pBatch) return;// 既に初期化済みなら何もしない
+	std::cout << "SimpleBoxCollider::InitDebugDraw()" << std::endl;
+	if (m_initialized) return; // 既に初期化済みなら何もしない
 
-	g_pBatch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(ctx);
-	g_pEffect = std::make_unique<BasicEffect>(device);
-	g_pEffect->SetVertexColorEnabled(true);
-	g_pStates = std::make_unique<CommonStates>(device);
+	m_Batch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(ctx);
+	m_Effect = std::make_unique<BasicEffect>(device);
+	m_Effect->SetVertexColorEnabled(true);
+	m_States = std::make_unique<CommonStates>(device);
+
+	// ★ InputLayout を作る
+	void const* bytecode = nullptr;
+	size_t      length = 0;
+	m_Effect->GetVertexShaderBytecode(&bytecode, &length);
+
+	//const D3D11_INPUT_ELEMENT_DESC layout[] = {
+	//		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,     0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	//		{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT,  0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	//};
+
+	ComPtr<ID3D11InputLayout> il;
+	HRESULT hr = device->CreateInputLayout(
+		VertexPositionColor::InputElements,      // 公式のレイアウト定義
+		VertexPositionColor::InputElementCount,  // 公式の要素数
+		bytecode,
+		length,
+		il.GetAddressOf()
+	);
+	if (SUCCEEDED(hr)) {
+		m_InputLayout = il;  // 保存
+
+		std::cout<< "SimpleBoxCollider:成功" << std::endl;
+	}
+	else {
+		std::cerr << "SimpleBoxCollider:失敗" << std::endl;
+	}
+
+	m_initialized = true;
 }
 
 
-// デバッグ用のコライダービジュアルを描画する関数
-void SimpleBoxCollider::DrawDebugCollider(const Camera& cam) const
-{
 
-	auto& effect = *g_pEffect;
-	auto& batch = *g_pBatch;
-	auto world = Matrix::Identity;
+// デバッグ用のコライダービジュアルを描画する関数
+void SimpleBoxCollider::DrawDebugCollider(const Camera& cam, const Matrix& world) const
+{
+	// 初期化チェック
+	if (!m_Batch || !m_Effect || !m_States) {
+		return;
+	}
+
+	auto context = Renderer::GetDeviceContext();
+	auto& effect = *m_Effect;
+	auto& batch = *m_Batch;
+
+	// --- 描画ステートの完全な保存 ---
+	ID3D11RasterizerState* prevRasterState = nullptr;
+	ID3D11DepthStencilState* prevDepthState = nullptr;
+	UINT                     prevStencilRef = 0;
+	ID3D11BlendState* prevBlendState = nullptr;
+	float                    prevBlendFactor[4] = { 0.0f };
+	UINT                     prevSampleMask = 0;
+	ID3D11InputLayout* prevInputLayout = nullptr;
+	D3D11_PRIMITIVE_TOPOLOGY prevTopology;
+	ID3D11VertexShader* prevVS = nullptr;
+	ID3D11ClassInstance* prevVSClassInstances[256] = { nullptr };
+	UINT                     numVSClassInstances = 256;
+	ID3D11PixelShader* prevPS = nullptr;
+	ID3D11ClassInstance* prevPSClassInstances[256] = { nullptr };
+	UINT                     numPSClassInstances = 256;
+
+	context->RSGetState(&prevRasterState);
+	context->OMGetDepthStencilState(&prevDepthState, &prevStencilRef);
+	context->OMGetBlendState(&prevBlendState, prevBlendFactor, &prevSampleMask);
+	context->IAGetInputLayout(&prevInputLayout);
+	context->IAGetPrimitiveTopology(&prevTopology);
+	context->VSGetShader(&prevVS, prevVSClassInstances, &numVSClassInstances);
+	context->PSGetShader(&prevPS, prevPSClassInstances, &numPSClassInstances);
+
+	// === 追加: IAのVB/IBを保存 ===
+	ID3D11Buffer* prevVB[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
+	UINT prevStride[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
+	UINT prevOffset[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
+	context->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT,
+		prevVB, prevStride, prevOffset);
+
+	ID3D11Buffer* prevIB = nullptr;
+	DXGI_FORMAT   prevIBFmt = DXGI_FORMAT_UNKNOWN;
+	UINT          prevIBOfs = 0;
+	context->IAGetIndexBuffer(&prevIB, &prevIBFmt, &prevIBOfs);
+
+	// === 追加: VS/PS の定数バッファを保存（全部は重いので0～3だけでもOK） ===
+	ID3D11Buffer* prevVSCB[4] = {};
+	ID3D11Buffer* prevPSCB[4] = {};
+	context->VSGetConstantBuffers(0, 4, prevVSCB);
+	context->PSGetConstantBuffers(0, 4, prevPSCB);
+
+	// === 追加: PS の SRV/Sampler も必要なら保存（t0～t3/s0～s3程度で十分） ===
+	ID3D11ShaderResourceView* prevPSRV[4] = {};
+	ID3D11SamplerState* prevPSSamp[4] = {};
+	context->PSGetShaderResources(0, 4, prevPSRV);
+	context->PSGetSamplers(0, 4, prevPSSamp);
+
+
+	// --- デバッグ描画の開始 ---
 	effect.SetWorld(world);
 	effect.SetView(cam.GetViewMatrix());
 	effect.SetProjection(cam.GetProjectionMatrix());
-	effect.Apply(Renderer::GetDeviceContext());
+	effect.Apply(context);
 
-	Renderer::GetDeviceContext()->IASetInputLayout(nullptr);
-	Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	context->IASetInputLayout(m_InputLayout.Get());
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
-	// 半分の各軸長
+	context->OMSetDepthStencilState(m_States->DepthNone(), 0);
+
+	batch.Begin();
+
 	float hx = size.x * 0.5f;
 	float hy = size.y * 0.5f;
 	float hz = size.z * 0.5f;
 
-	// 8 つのコーナー
 	Vector3 corners[8] = {
-		center + Vector3(-hx, -hy, -hz),
-		center + Vector3(-hx, +hy, -hz),
-		center + Vector3(+hx, +hy, -hz),
-		center + Vector3(+hx, -hy, -hz),
-		center + Vector3(-hx, -hy, +hz),
-		center + Vector3(-hx, +hy, +hz),
-		center + Vector3(+hx, +hy, +hz),
-		center + Vector3(+hx, -hy, +hz)
+		 Vector3(-hx, -hy, -hz),  Vector3(-hx, +hy, -hz),
+		 Vector3(+hx, +hy, -hz),  Vector3(+hx, -hy, -hz),
+		 Vector3(-hx, -hy, +hz),  Vector3(-hx, +hy, +hz),
+		 Vector3(+hx, +hy, +hz),  Vector3(+hx, -hy, +hz)
 	};
 
-	// 12 エッジを描くための頂点
-	const int indices[24] = {
-		0,1, 1,2, 2,3, 3,0, // 下面
-		4,5, 5,6, 6,7, 7,4, // 上面
-		0,4, 1,5, 2,6, 3,7  // 側面
-	};
-
-	batch.Begin();
-	for (int i = 0; i < 24; ++i)
-	{
-		int idx = indices[i];
-		batch.DrawLine(
-			VertexPositionColor(corners[idx], Colors::Red),
-			VertexPositionColor(corners[indices[i ^ 1]], Colors::Red)
-		);
-		++i;
-	}
+	// 12エッジを描画
+	batch.DrawLine(VertexPositionColor(corners[0], Colors::Red), VertexPositionColor(corners[1], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[1], Colors::Red), VertexPositionColor(corners[2], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[2], Colors::Red), VertexPositionColor(corners[3], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[3], Colors::Red), VertexPositionColor(corners[0], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[4], Colors::Red), VertexPositionColor(corners[5], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[5], Colors::Red), VertexPositionColor(corners[6], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[6], Colors::Red), VertexPositionColor(corners[7], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[7], Colors::Red), VertexPositionColor(corners[4], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[0], Colors::Red), VertexPositionColor(corners[4], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[1], Colors::Red), VertexPositionColor(corners[5], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[2], Colors::Red), VertexPositionColor(corners[6], Colors::Red));
+	batch.DrawLine(VertexPositionColor(corners[3], Colors::Red), VertexPositionColor(corners[7], Colors::Red));
 
 	batch.End();
 
+	// === 追加: IA VB/IB を復元 ===
+	context->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT,
+		prevVB, prevStride, prevOffset);
+	context->IASetIndexBuffer(prevIB, prevIBFmt, prevIBOfs);
+
+	// 参照カウント解放
+	for (auto* b : prevVB) if (b) b->Release();
+	if (prevIB) prevIB->Release();
+
+	// === 追加: VS/PS の CB 復元 ===
+	context->VSSetConstantBuffers(0, 4, prevVSCB);
+	context->PSSetConstantBuffers(0, 4, prevPSCB);
+	for (auto* b : prevVSCB) if (b) b->Release();
+	for (auto* b : prevPSCB) if (b) b->Release();
+
+	// === 追加: PS の SRV/Sampler 復元 ===
+	context->PSSetShaderResources(0, 4, prevPSRV);
+	context->PSSetSamplers(0, 4, prevPSSamp);
+	for (auto* v : prevPSRV)   if (v) v->Release();
+	for (auto* s : prevPSSamp) if (s) s->Release();
+
+
+	// --- 描画ステートの完全な復元 ---
+	context->RSSetState(prevRasterState);
+	context->OMSetDepthStencilState(prevDepthState, prevStencilRef);
+	context->OMSetBlendState(prevBlendState, prevBlendFactor, prevSampleMask);
+	context->IASetInputLayout(prevInputLayout);
+	context->IASetPrimitiveTopology(prevTopology);
+	context->VSSetShader(prevVS, prevVSClassInstances, numVSClassInstances);
+	context->PSSetShader(prevPS, prevPSClassInstances, numPSClassInstances);
+
+	// --- 取得したインターフェースの解放 ---
+	if (prevRasterState) prevRasterState->Release();
+	if (prevDepthState) prevDepthState->Release();
+	if (prevBlendState) prevBlendState->Release();
+	if (prevInputLayout) prevInputLayout->Release();
+	if (prevVS) prevVS->Release();
+	for (UINT i = 0; i < numVSClassInstances; ++i) { if (prevVSClassInstances[i]) prevVSClassInstances[i]->Release(); }
+	if (prevPS) prevPS->Release();
+	for (UINT i = 0; i < numPSClassInstances; ++i) { if (prevPSClassInstances[i]) prevPSClassInstances[i]->Release(); }
+
+	// Rendererが持つシェーダーのキャッシュもリセットしておく
+	//Renderer::ResetStateCache();
 }
+
+

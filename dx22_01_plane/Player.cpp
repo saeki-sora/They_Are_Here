@@ -4,6 +4,9 @@
 #include "utility.h"
 #include "Game.h"
 #include "Collision.h"
+#include"Block.h"
+
+#include <type_traits>
 
 using namespace std;
 using namespace DirectX::SimpleMath;
@@ -70,6 +73,34 @@ void Player::Init()
 	}
 }
 
+
+//========================================
+//当たり判定チェック関数
+//========================================
+bool Player::CheckCollisionWithBlocks(const Vector3& newPosition)
+{
+	// 新しい位置でのコライダーを作成
+	SimpleBoxCollider testCollider(newPosition, collider.size);
+
+	// ゲーム内のすべてのBlockオブジェクトをチェック
+	auto blocks = Game::GetInstance().FindAllObjects<Block>();
+	for (auto& weakBlock : blocks)
+	{
+		// weak_ptrをshared_ptrに変換してチェック
+		if (auto block = weakBlock.lock())
+		{
+			// 当たり判定をチェック
+			if (testCollider.CheckCollision(block->GetCollider()))
+			{
+				return true; // 衝突している
+			}
+		}
+	}
+	return false; // 衝突していない
+}
+
+
+
 //=======================================
 // 更新処理
 //=======================================
@@ -112,16 +143,55 @@ void Player::Update()
 	if (Input::GetKeyPress('S')) movement -= forwardFlat * m_MoveSpeed;
 	if (Input::GetKeyPress('A')) movement -= right * m_MoveSpeed;
 	if (Input::GetKeyPress('D')) movement += right * m_MoveSpeed;
-
 #ifdef _DEBUG
-	if (Input::GetKeyPress('Q')) movement.y += m_MoveSpeed; // デバッグ用上下
+	if (Input::GetKeyPress('Q')) movement.y += m_MoveSpeed;
 	if (Input::GetKeyPress('E')) movement.y -= m_MoveSpeed;
 #endif
 
-	// プレイヤーの位置とコライダーの中心位置を更新
-	m_Position += movement;
+	// -------- Collision detection added ---------
+	// 各軸ごとに仮位置を試し、ブロックと衝突する場合はその軸の移動を取り消す
+	auto weakBlocks = Game::GetInstance().FindAllObjects<Block>();
+
+	// 指定位置に仮置きした場合にブロックと衝突するか？
+	auto collidesAt = [&](const DirectX::SimpleMath::Vector3& testPos) -> bool {
+		SimpleBoxCollider testCol = collider; // 既存と同サイズ
+		testCol.center = testPos;
+
+		for (auto& wb : weakBlocks) {
+			if (auto b = wb.lock()) {
+				// Block 側に Collider 取得のアクセサが必要：
+				//   const SimpleBoxCollider& Block::GetCollider() const（ColliderObject 経由でOK）
+				if (testCol.CheckCollision(b->GetCollider())) {
+					return true; // 1つでも当たれば衝突
+				}
+			}
+		}
+		return false;
+		};
+
+	// 軸ごとに仮移動 → 衝突した軸の移動だけ潰す
+	DirectX::SimpleMath::Vector3 desired = m_Position;
+
+	if (movement.x != 0.0f) {
+		auto test = desired; test.x += movement.x;
+		if (!collidesAt(test)) desired.x = test.x; // 当たらなければ反映
+	}
+	if (movement.y != 0.0f) {
+		auto test = desired; test.y += movement.y;
+		if (!collidesAt(test)) desired.y = test.y;
+	}
+	if (movement.z != 0.0f) {
+		auto test = desired; test.z += movement.z;
+		if (!collidesAt(test)) desired.z = test.z;
+	}
+
+	// 反映
+	m_Position = desired;
 	collider.center = m_Position;
 }
+
+
+
 
 //=======================================
 // 描画処理

@@ -112,6 +112,10 @@ void Block::Draw()
 			m_subsets[i].IndexBase, // 最初のインデックスバッファの位置	
 			m_subsets[i].VertexBase); // 頂点バッファの最初から使用
 	}
+
+#ifdef _DEBUG
+	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), worldmtx);
+#endif
 }
 
 //=======================================

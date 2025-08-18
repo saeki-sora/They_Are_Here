@@ -43,6 +43,8 @@ public:
 
 	bool GetGoalFlag() const { return IsGoal; }// ゴールフラグの取得
 
+	bool CheckCollisionWithBlocks(const Vector3& newPosition);// ブロックとの衝突判定
+
 	Vector3 GetPosition() const override { return m_Position; } // ポジションの取得
 	void SetPosition(const DirectX::SimpleMath::Vector3& pos) { m_Position = pos; }
 

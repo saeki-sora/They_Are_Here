@@ -8,7 +8,7 @@ void ColliderObject::Draw()
 
 #ifdef _DEBUG
 
-	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera()); // デバッグ描画
+	//collider.DrawDebugCollider(Game::GetInstance().GetMainCamera()); // デバッグ描画
 
 #endif // _DEBUG
 

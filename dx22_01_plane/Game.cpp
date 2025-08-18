@@ -161,3 +161,23 @@ void Game::DeleteAllObject()
 	m_Objects.shrink_to_fit();
 }
 
+
+// 削除されたオブジェクトのクリーンアップ
+void Game::CleanupDeadObjects()
+{
+	size_t originalSize = m_Objects.size();
+
+	// shared_ptrの参照カウントが1（このコンテナのみ）のオブジェクトを削除
+	m_Objects.erase(
+		std::remove_if(m_Objects.begin(), m_Objects.end(),
+			[](const std::shared_ptr<Object>& obj) {
+				return obj.use_count() <= 1; // このコンテナ以外に参照がない
+			}),
+		m_Objects.end()
+	);
+
+	// オブジェクトが実際に削除された場合はキャッシュを無効化
+	if (m_Objects.size() != originalSize) {
+		InvalidateCache();
+	}
+}
