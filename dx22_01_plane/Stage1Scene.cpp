@@ -34,7 +34,6 @@ void Stage1Scene::Init()
 
 	m_MakeMap.Create(); // マップ生成クラスの初期化
 
-	Game::GetInstance().AddObject<Block>(Vector3(0.0f, 30.0f, 0.0f), Vector3(1.0f, 10.0f, 10.0f));
 
 }
 

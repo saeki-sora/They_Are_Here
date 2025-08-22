@@ -52,11 +52,6 @@ void SimpleBoxCollider::InitDebugDraw(ID3D11Device* device, ID3D11DeviceContext*
 	size_t      length = 0;
 	m_Effect->GetVertexShaderBytecode(&bytecode, &length);
 
-	//const D3D11_INPUT_ELEMENT_DESC layout[] = {
-	//		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,     0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	//		{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT,  0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	//};
-
 	ComPtr<ID3D11InputLayout> il;
 	HRESULT hr = device->CreateInputLayout(
 		VertexPositionColor::InputElements,      // 公式のレイアウト定義

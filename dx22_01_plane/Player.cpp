@@ -79,6 +79,11 @@ void Player::Init()
 //========================================
 bool Player::CheckCollisionWithBlocks(const Vector3& newPosition)
 {
+
+#ifdef _DEBUG
+	return false;// デバッグビルド時は当たり判定をスキップ
+#endif
+
 	// 新しい位置でのコライダーを作成
 	SimpleBoxCollider testCollider(newPosition, collider.size);
 
@@ -146,6 +151,10 @@ void Player::Update()
 #ifdef _DEBUG
 	if (Input::GetKeyPress('Q')) movement.y += m_MoveSpeed;
 	if (Input::GetKeyPress('E')) movement.y -= m_MoveSpeed;
+
+	m_Position += movement;
+	collider.center = m_Position;
+	return;
 #endif
 
 	// -------- Collision detection added ---------

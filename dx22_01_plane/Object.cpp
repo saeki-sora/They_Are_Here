@@ -2,10 +2,10 @@
 
 using namespace DirectX::SimpleMath;
 
-Object::Object(const DirectX::SimpleMath::Vector3& pos, const DirectX::SimpleMath::Vector3& size)
+Object::Object(const DirectX::SimpleMath::Vector3& pos, const DirectX::SimpleMath::Vector3& scale)
 	:
-m_Position(pos),
-m_Scale(size),
+	m_Position(pos),
+	m_Scale(scale),
 m_Rotation(0, 0, 0) 
 {
 

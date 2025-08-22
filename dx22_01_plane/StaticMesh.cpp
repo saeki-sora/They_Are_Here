@@ -80,4 +80,7 @@ void StaticMesh::Load(std::string filename, std::string texturedirectory)
 
 		m_materials.emplace_back(material);
 	}
+
+	m_min = AssimpPerse::GetSceneMin(); // AssimpPerse‚©‚çÅ¬À•W‚ğæ“¾
+	m_max = AssimpPerse::GetSceneMax(); // AssimpPerse‚©‚çÅ‘åÀ•W‚ğæ“¾
 }

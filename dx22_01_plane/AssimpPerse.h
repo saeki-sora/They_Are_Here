@@ -3,6 +3,7 @@
 #include	<assimp/scene.h>
 #include	<assimp/postprocess.h>
 #include	<assimp/cimport.h>
+#include <SimpleMath.h>
 
 namespace AssimpPerse
 {
@@ -42,4 +43,6 @@ namespace AssimpPerse
 	std::vector<std::vector<unsigned int>> GetIndices();
 	std::vector<MATERIAL> GetMaterials();
 	std::vector<std::unique_ptr<Texture>> GetTextures();
+	DirectX::SimpleMath::Vector3 GetSceneMin();
+	DirectX::SimpleMath::Vector3 GetSceneMax();
 }

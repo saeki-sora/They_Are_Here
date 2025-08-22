@@ -118,6 +118,7 @@ void Pole::Draw()
 	}
 
 #ifdef _DEBUG
+	Matrix colliderWorldMatrix = r * t;
 	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), worldmtx);
 #endif
 }

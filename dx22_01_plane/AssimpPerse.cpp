@@ -4,6 +4,8 @@
 #include	<cassert>
 #include	"Texture.h"
 #include	"AssimpPerse.h"
+#include<algorithm>
+#include <cfloat>
 
 #pragma comment(lib, "assimp-vc143-mtd.lib")
 
@@ -14,6 +16,9 @@ namespace AssimpPerse
 	std::vector<SUBSET> g_subsets{};					// サブセット情報
 	std::vector<MATERIAL> g_materials{};				// マテリアル
 	std::vector<std::unique_ptr<Texture>> g_textures;	// ディフューズテクスチャ群
+
+	DirectX::SimpleMath::Vector3 g_sceneMin(FLT_MAX, FLT_MAX, FLT_MAX);
+	DirectX::SimpleMath::Vector3 g_sceneMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
 	// ディフューズTxtureコンテナを返す
 	std::vector<std::unique_ptr<Texture>> GetTextures()
@@ -101,7 +106,7 @@ namespace AssimpPerse
 							texpath = texpath.substr(pos + 1);
 						}
 					}
-					
+
 
 					texpaths.push_back(texpath);
 					// 内蔵テクスチャかどうかを判断する
@@ -173,6 +178,10 @@ namespace AssimpPerse
 		g_materials.clear();
 		g_textures.clear();
 
+		//AABBの値をリセット
+		g_sceneMin = DirectX::SimpleMath::Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
+		g_sceneMax = DirectX::SimpleMath::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
 
 		// シーン情報構築
 		Assimp::Importer importer;
@@ -211,6 +220,12 @@ namespace AssimpPerse
 
 				// 座標		
 				v.pos = mesh->mVertices[vidx];
+
+				DirectX::SimpleMath::Vector3 currentPos(v.pos.x, v.pos.y, v.pos.z);
+				g_sceneMin = DirectX::SimpleMath::Vector3::Min(g_sceneMin, currentPos);
+				g_sceneMax = DirectX::SimpleMath::Vector3::Max(g_sceneMax, currentPos);
+
+				//g_vertices[m].push_back(v);
 
 				// この頂点が使用しているマテリアルのインデックス番号（メッシュ内の）
 				// を使用してマテリアル名をセット
@@ -324,5 +339,15 @@ namespace AssimpPerse
 	std::vector<MATERIAL> GetMaterials()
 	{
 		return g_materials; // マテリアル
+	}
+
+	// シーンのAABBを取得
+	DirectX::SimpleMath::Vector3 GetSceneMin()
+	{
+		return g_sceneMin; // シーンの最小値
+	}
+	DirectX::SimpleMath::Vector3 GetSceneMax()
+	{
+		return g_sceneMax; // シーンの最大値
 	}
 }

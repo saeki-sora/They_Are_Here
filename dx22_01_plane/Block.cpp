@@ -41,6 +41,9 @@ void Block::Init()
 
 	m_MeshRenderer.Init(staticmesh);
 
+	//当たり判定用のサイズを設定
+	collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
+
 	// シェーダオブジェクト生成
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
 
@@ -114,7 +117,9 @@ void Block::Draw()
 	}
 
 #ifdef _DEBUG
-	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), worldmtx);
+	Matrix colliderWorldMatrix = r * t;
+	// スケールを含めない行列を渡して描画します。
+	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), colliderWorldMatrix);
 #endif
 }
 
