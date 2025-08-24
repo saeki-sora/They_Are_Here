@@ -42,6 +42,9 @@ void Pole::Init()
 
 	m_MeshRenderer.Init(staticmesh);
 
+	//当たり判定用のサイズを設定
+	collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
+
 	// シェーダオブジェクト生成
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
 
@@ -67,10 +70,6 @@ void Pole::Init()
 		m_Materiales.push_back(std::move(m));
 	}
 
-	// モデルによってスケールを調整
-	m_Scale.x = 10;
-	m_Scale.y = 10;
-	m_Scale.z = 10;
 }
 
 //=======================================

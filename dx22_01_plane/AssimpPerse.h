@@ -4,7 +4,6 @@
 #include	<assimp/postprocess.h>
 #include	<assimp/cimport.h>
 #include <SimpleMath.h>
-
 namespace AssimpPerse
 {
 	struct VERTEX {
@@ -16,7 +15,6 @@ namespace AssimpPerse
 		int			materialindex;	// マテリアルインデックス
 		std::string mtrlname;		// マテリアル名
 	};
-
 	struct SUBSET {
 		std::string meshname;		// メッシュ名
 		int materialindex;			// マテリアルインデックス
@@ -26,7 +24,6 @@ namespace AssimpPerse
 		unsigned int IndexNum;		// インデックス数
 		std::string	 mtrlname;		// マテリアル名
 	};
-
 	struct MATERIAL {
 		std::string mtrlname;		// マテリアル名
 		aiColor4D	Ambient;		// アンビエント
@@ -37,11 +34,12 @@ namespace AssimpPerse
 		std::string texturename;	// テクスチャ名
 	};
 
-	void GetModelData(std::string filename, std::string texturedirectory);
-	std::vector<SUBSET> GetSubsets();
-	std::vector<std::vector<VERTEX>> GetVertices();
-	std::vector<std::vector<unsigned int>> GetIndices();
-	std::vector<MATERIAL> GetMaterials();
+	// 最適化されたシグネチャ（参照渡しと参照返し）
+	void GetModelData(const std::string& filename, const std::string& texturedirectory);
+	const std::vector<SUBSET>& GetSubsets();
+	const std::vector<std::vector<VERTEX>>& GetVertices();
+	const std::vector<std::vector<unsigned int>>& GetIndices();
+	const std::vector<MATERIAL>& GetMaterials();
 	std::vector<std::unique_ptr<Texture>> GetTextures();
 	DirectX::SimpleMath::Vector3 GetSceneMin();
 	DirectX::SimpleMath::Vector3 GetSceneMax();

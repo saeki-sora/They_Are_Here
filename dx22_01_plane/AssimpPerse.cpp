@@ -27,161 +27,126 @@ namespace AssimpPerse
 	}
 
 	// マテリアル情報をassimpを使用して取得する
-	void GetMaterialData(const aiScene* pScene, std::string texturedirectory)
+	void GetMaterialData(const aiScene* pScene, const std::string& texturedirectory)
 	{
-		// マテリアル数分テクスチャ格納エリアを用意する
-		g_textures.resize(pScene->mNumMaterials);
+		// 事前に正確なサイズを確保
+		g_textures.clear();
+		g_textures.reserve(pScene->mNumMaterials);
+		g_materials.clear();
+		g_materials.reserve(pScene->mNumMaterials);
 
 		// マテリアル数文ループ
 		for (unsigned int m = 0; m < pScene->mNumMaterials; m++)
 		{
-			aiMaterial* material = pScene->mMaterials[m];
+			const aiMaterial* material = pScene->mMaterials[m];
 
 			// マテリアル名取得
-			std::string mtrlname = std::string(material->GetName().C_Str());
+			std::string mtrlname = material->GetName().C_Str();
 			std::cout << mtrlname << std::endl;
 
-			// マテリアル情報
-			aiColor4D ambient;
-			aiColor4D diffuse;
-			aiColor4D specular;
-			aiColor4D emission;
-			float shiness;
+			// マテリアル情報（デフォルト値で初期化）
+			aiColor4D ambient(0.0f, 0.0f, 0.0f, 0.0f);
+			aiColor4D diffuse(1.0f, 1.0f, 1.0f, 1.0f);
+			aiColor4D specular(0.0f, 0.0f, 0.0f, 0.0f);
+			aiColor4D emission(0.0f, 0.0f, 0.0f, 0.0f);
+			float shiness = 0.0f;
 
-			// アンビエント
-			if (AI_SUCCESS == aiGetMaterialColor(material, AI_MATKEY_COLOR_AMBIENT, &ambient)) {
-			}
-			else {
-				ambient = aiColor4D(0.0f, 0.0f, 0.0f, 0.0f);
-			}
+			// マテリアルプロパティを一度に取得
+			aiGetMaterialColor(material, AI_MATKEY_COLOR_AMBIENT, &ambient);
+			aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &diffuse);
+			aiGetMaterialColor(material, AI_MATKEY_COLOR_SPECULAR, &specular);
+			aiGetMaterialColor(material, AI_MATKEY_COLOR_EMISSIVE, &emission);
+			aiGetMaterialFloat(material, AI_MATKEY_SHININESS, &shiness);
 
-			// ディフューズ
-			if (AI_SUCCESS == aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &diffuse)) {
-			}
-			else {
-				diffuse = aiColor4D(1.0f, 1.0f, 1.0f, 1.0f);
-			}
+			// テクスチャ処理
+			std::string texturename;
+			std::unique_ptr<Texture> texture = nullptr;
 
-			// スペキュラ
-			if (AI_SUCCESS == aiGetMaterialColor(material, AI_MATKEY_COLOR_SPECULAR, &specular)) {
-			}
-			else {
-				specular = aiColor4D(0.0f, 0.0f, 0.0f, 0.0f);
-			}
-
-			// エミッション
-			if (AI_SUCCESS == aiGetMaterialColor(material, AI_MATKEY_COLOR_EMISSIVE, &emission)) {
-			}
-			else {
-				emission = aiColor4D(0.0f, 0.0f, 0.0f, 0.0f);
-			}
-
-			// シャイネス
-			if (AI_SUCCESS == aiGetMaterialFloat(material, AI_MATKEY_SHININESS, &shiness)) {
-			}
-			else {
-				shiness = 0.0f;
-			}
-
-			// このマテリアルに紐づいているディフューズテクスチャ数分ループ
-			std::vector<std::string> texpaths{};
-
-			for (unsigned int t = 0; t < material->GetTextureCount(aiTextureType_DIFFUSE); t++)
+			unsigned int textureCount = material->GetTextureCount(aiTextureType_DIFFUSE);
+			if (textureCount > 0)
 			{
 				aiString path{};
-
-				// t番目のテクスチャパス取得
-				if (AI_SUCCESS == material->Get(AI_MATKEY_TEXTURE(aiTextureType_DIFFUSE, t), path))
+				if (AI_SUCCESS == material->Get(AI_MATKEY_TEXTURE(aiTextureType_DIFFUSE, 0), path))
 				{
-					// テクスチャパス取得
-					std::string texpath = std::string(path.C_Str());
+					std::string texpath = path.C_Str();
 					std::cout << texpath << std::endl;
 
+					// パス正規化（一回だけ処理）
 					if (texpath.find(':') != std::string::npos)
 					{
-						size_t pos = texpath.find_last_of('/\\');
-
+						size_t pos = texpath.find_last_of("/\\");
 						if (pos != std::string::npos)
 						{
 							texpath = texpath.substr(pos + 1);
 						}
 					}
+					texturename = texpath;
 
-
-					texpaths.push_back(texpath);
-					// 内蔵テクスチャかどうかを判断する
-					if (auto tex = pScene->GetEmbeddedTexture(path.C_Str())) {
-
-						std::unique_ptr<Texture> texture = std::make_unique<Texture>();
-
-						// 内蔵テクスチャの場合
-						bool sts = texture->LoadFromFemory(
-							(unsigned char*)tex->pcData,			// 先頭アドレス
-							tex->mWidth);			// テクスチャサイズ（メモリにある場合幅がサイズ）	
-						if (sts) {
-							g_textures[m] = std::move(texture);
-						}
-						std::cout << "Embedded" << std::endl;
-
-					}
-					else {
-						// 外部テクスチャファイルの場合
-						std::unique_ptr<Texture> texture;
+					// テクスチャ読み込み
+					if (auto tex = pScene->GetEmbeddedTexture(path.C_Str()))
+					{
+						// 内蔵テクスチャ
 						texture = std::make_unique<Texture>();
-
+						if (texture->LoadFromFemory((unsigned char*)tex->pcData, tex->mWidth))
+						{
+							std::cout << "Embedded" << std::endl;
+						}
+						else
+						{
+							texture.reset();
+						}
+					}
+					else
+					{
+						// 外部テクスチャファイル
+						texture = std::make_unique<Texture>();
 						std::string texname = texturedirectory + "/" + texpath;
 
-						bool sts = texture->Load(texname);
-						if (sts) {
-							g_textures[m] = std::move(texture);
+						if (texture->Load(texname))
+						{
+							std::cout << "External texture loaded" << std::endl;
 						}
-
-						std::cout << "other Embedded" << std::endl;
+						else
+						{
+							texture.reset();
+						}
 					}
 				}
-				// ディフューズテクスチャがなかった場合
-				else
-				{
-					// 外部テクスチャファイルの場合
-					std::unique_ptr<Texture> texture;
-					texture = std::make_unique<Texture>();
-					g_textures[m] = std::move(texture);
-				}
 			}
 
-			// マテリアル情報を保存
-			AssimpPerse::MATERIAL mtrl{};
-			mtrl.mtrlname = mtrlname;
-			mtrl.Ambient = ambient;
-			mtrl.Diffuse = diffuse;
-			mtrl.Specular = specular;
-			mtrl.Emission = emission;
-			mtrl.Shiness = shiness;
-			if (texpaths.size() == 0)
+			// テクスチャが読み込めなかった場合のダミーテクスチャ
+			if (!texture)
 			{
-				mtrl.texturename = "";
+				texture = std::make_unique<Texture>();
 			}
-			else
-			{
-				mtrl.texturename = texpaths[0];
-			}
-			g_materials.push_back(mtrl);
+
+			g_textures.push_back(std::move(texture));
+
+			// マテリアル情報を直接構築してpush_back
+			g_materials.emplace_back(MATERIAL{
+				std::move(mtrlname),
+				ambient,
+				diffuse,
+				specular,
+				emission,
+				shiness,
+				std::move(texturename)
+				});
 		}
 	}
 
-	void GetModelData(std::string filename, std::string texturedirectory)
+	void GetModelData(const std::string& filename, const std::string& texturedirectory)
 	{
-		//データをクリア
+		// データをクリア（reserve付きで高速化）
 		g_vertices.clear();
 		g_indices.clear();
 		g_subsets.clear();
 		g_materials.clear();
 		g_textures.clear();
 
-		//AABBの値をリセット
+		// AABBの値をリセット
 		g_sceneMin = DirectX::SimpleMath::Vector3(FLT_MAX, FLT_MAX, FLT_MAX);
 		g_sceneMax = DirectX::SimpleMath::Vector3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-
 
 		// シーン情報構築
 		Assimp::Importer importer;
@@ -201,153 +166,113 @@ namespace AssimpPerse
 		// マテリアル情報取得
 		GetMaterialData(pScene, texturedirectory);
 
-		// メッシュ数文ループ（マテリアル毎にメッシュを分割するように指定している）
+		// メモリ事前確保
 		g_vertices.resize(pScene->mNumMeshes);
+		g_indices.resize(pScene->mNumMeshes);
+		g_subsets.reserve(pScene->mNumMeshes);
 
+		// メッシュ処理
 		for (unsigned int m = 0; m < pScene->mNumMeshes; m++)
 		{
-			aiMesh* mesh = pScene->mMeshes[m];
+			const aiMesh* mesh = pScene->mMeshes[m];
+			const std::string meshname = mesh->mName.C_Str();
+			const std::string& mtrlname = g_materials[mesh->mMaterialIndex].mtrlname;
 
-			// メッシュ名取得
-			std::string meshname = std::string(mesh->mName.C_Str());
+			// 頂点データとインデックスデータのメモリを事前確保
+			g_vertices[m].reserve(mesh->mNumVertices);
+			g_indices[m].reserve(mesh->mNumFaces * 3); // 三角形なので3倍
 
-			//　頂点数分ループ
+			// 頂点処理
 			for (unsigned int vidx = 0; vidx < mesh->mNumVertices; vidx++)
 			{
-				// 頂点データ
-				VERTEX	v{};
-				v.meshname = meshname;		// メッシュ名セット
+				VERTEX v{};
+				v.meshname = meshname;
+				v.materialindex = mesh->mMaterialIndex;
+				v.mtrlname = mtrlname;
 
-				// 座標		
+				// 座標
 				v.pos = mesh->mVertices[vidx];
 
+				// AABB計算
 				DirectX::SimpleMath::Vector3 currentPos(v.pos.x, v.pos.y, v.pos.z);
 				g_sceneMin = DirectX::SimpleMath::Vector3::Min(g_sceneMin, currentPos);
 				g_sceneMax = DirectX::SimpleMath::Vector3::Max(g_sceneMax, currentPos);
 
-				//g_vertices[m].push_back(v);
+				// 法線
+				v.normal = mesh->HasNormals() ? mesh->mNormals[vidx] : aiVector3D(0.0f, 0.0f, 0.0f);
 
-				// この頂点が使用しているマテリアルのインデックス番号（メッシュ内の）
-				// を使用してマテリアル名をセット
-				v.materialindex = mesh->mMaterialIndex;
+				// 頂点カラー
+				v.color = mesh->HasVertexColors(0) ? mesh->mColors[0][vidx] : aiColor4D(1.0f, 1.0f, 1.0f, 1.0f);
 
-				v.mtrlname = g_materials[mesh->mMaterialIndex].mtrlname;
+				// テクスチャ座標
+				v.texcoord = mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][vidx] : aiVector3D(0.0f, 0.0f, 0.0f);
 
-				// 法線あり？
-				if (mesh->HasNormals()) {
-					v.normal = mesh->mNormals[vidx];
-				}
-				else
-				{
-					v.normal = aiVector3D(0.0f, 0.0f, 0.0f);
-				}
-
-				// 頂点カラー？（０番目）
-				if (mesh->HasVertexColors(0)) {
-					v.color = mesh->mColors[0][vidx];
-				}
-				else
-				{
-					v.color = aiColor4D(1.0f, 1.0f, 1.0f, 1.0f);
-				}
-
-				// テクスチャあり？（０番目）
-				if (mesh->HasTextureCoords(0)) {
-					v.texcoord = mesh->mTextureCoords[0][vidx];
-				}
-				else
-				{
-					v.texcoord = aiVector3D(0.0f, 0.0f, 0.0f);
-				}
-
-				// 頂点データを追加
 				g_vertices[m].push_back(v);
 			}
-		}
 
-		// メッシュ数文ループ
-		// インデックスデータ作成
-		g_indices.resize(pScene->mNumMeshes);
-		for (unsigned int m = 0; m < pScene->mNumMeshes; m++)
-		{
-			aiMesh* mesh = pScene->mMeshes[m];
-
-			// メッシュ名取得
-			std::string meshname = std::string(mesh->mName.C_Str());
-
-			// インデックス数分ループ
+			// インデックス処理
 			for (unsigned int fidx = 0; fidx < mesh->mNumFaces; fidx++)
 			{
-				aiFace face = mesh->mFaces[fidx];
-
+				const aiFace& face = mesh->mFaces[fidx];
 				assert(face.mNumIndices == 3);	// 三角形のみ対応
 
-				// インデックスデータを追加
-				for (unsigned int i = 0; i < face.mNumIndices; i++)
-				{
-					g_indices[m].push_back(face.mIndices[i]);
-				}
+				// 3つのインデックスを一度に追加
+				g_indices[m].insert(g_indices[m].end(),
+					face.mIndices, face.mIndices + 3);
 			}
 		}
 
-		// サブセット情報を生成
-		g_subsets.resize(pScene->mNumMeshes);
-		for (unsigned int m = 0; m < g_subsets.size(); m++)
-		{
-			g_subsets[m].IndexNum = (unsigned int)g_indices[m].size();
-			g_subsets[m].VertexNum = (unsigned int)g_vertices[m].size();
-			g_subsets[m].VertexBase = 0;
-			g_subsets[m].IndexBase = 0;
-			g_subsets[m].meshname = g_vertices[m][0].meshname;
-			g_subsets[m].mtrlname = g_vertices[m][0].mtrlname;
-			g_subsets[m].materialindex = g_vertices[m][0].materialindex;
-		}
+		// サブセット情報生成
+		unsigned int vertexBase = 0;
+		unsigned int indexBase = 0;
 
-		// サブセット情報を相対的なものにする	
-		for (int m = 0; m < g_subsets.size(); m++)
+		for (unsigned int m = 0; m < pScene->mNumMeshes; m++)
 		{
-			// 頂点バッファのベースを計算
-			g_subsets[m].VertexBase = 0;
-			for (int i = m - 1; i >= 0; i--) {
-				g_subsets[m].VertexBase += g_subsets[i].VertexNum;
-			}
+			SUBSET subset{};
+			subset.IndexNum = static_cast<unsigned int>(g_indices[m].size());
+			subset.VertexNum = static_cast<unsigned int>(g_vertices[m].size());
+			subset.VertexBase = vertexBase;
+			subset.IndexBase = indexBase;
+			subset.meshname = g_vertices[m].empty() ? "" : g_vertices[m][0].meshname;
+			subset.mtrlname = g_vertices[m].empty() ? "" : g_vertices[m][0].mtrlname;
+			subset.materialindex = g_vertices[m].empty() ? 0 : g_vertices[m][0].materialindex;
 
-			// インデックスバッファのベースを計算
-			g_subsets[m].IndexBase = 0;
-			for (int i = m - 1; i >= 0; i--) {
-				g_subsets[m].IndexBase += g_subsets[i].IndexNum;
-			}
+			g_subsets.push_back(subset);
+
+			// 次のメッシュのベース値を計算
+			vertexBase += subset.VertexNum;
+			indexBase += subset.IndexNum;
 		}
 	}
 
-	// サブセット情報
-	std::vector<SUBSET> GetSubsets()
+	// Getter関数群
+	const std::vector<SUBSET>& GetSubsets()
 	{
 		return g_subsets;
 	}
 
-	std::vector<std::vector<VERTEX>> GetVertices()
+	const std::vector<std::vector<VERTEX>>& GetVertices()
 	{
-		return g_vertices; // 頂点データ（メッシュ単位）
+		return g_vertices;
 	}
 
-	std::vector<std::vector<unsigned int>> GetIndices()
+	const std::vector<std::vector<unsigned int>>& GetIndices()
 	{
-		return g_indices; // インデックスデータ（メッシュ単位）
+		return g_indices;
 	}
 
-	std::vector<MATERIAL> GetMaterials()
+	const std::vector<MATERIAL>& GetMaterials()
 	{
-		return g_materials; // マテリアル
+		return g_materials;
 	}
 
-	// シーンのAABBを取得
 	DirectX::SimpleMath::Vector3 GetSceneMin()
 	{
-		return g_sceneMin; // シーンの最小値
+		return g_sceneMin;
 	}
+
 	DirectX::SimpleMath::Vector3 GetSceneMax()
 	{
-		return g_sceneMax; // シーンの最大値
+		return g_sceneMax;
 	}
 }

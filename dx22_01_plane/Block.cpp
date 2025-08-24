@@ -57,7 +57,7 @@ void Block::Init()
 	vector<MATERIAL> materials = staticmesh.GetMaterials();
 
 	// マテリアル数分ループ
-	for (int i = 0; i < materials.size(); i++)
+	for (int i = 0; i < materials.size(); ++i)
 	{
 		// マテリアルオブジェクト生成
 		std::unique_ptr<Material> m = std::make_unique<Material>();

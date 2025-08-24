@@ -14,8 +14,8 @@ using namespace DirectX::SimpleMath;
 //コンストラクタ
 Player::Player(const Vector3& pos, const Vector3& size)
 	: ColliderObject(pos, size),
-	m_MouseSensitivity(0.005f),
-	m_MoveSpeed(0.5f),
+	m_MouseSensitivity(0.003f),
+	m_MoveSpeed(6.5f),
 	m_MouseCaptured(true),
 	m_Forward(Vector3::UnitZ),
 	m_Pitch(0.0f)
@@ -41,7 +41,6 @@ void Player::Init()
 	std::string texDirectory = "assets/texture/terain.png";
 
 	// Meshを読み込む
-
 	std::string tmpStr1(reinterpret_cast<const char*>(modelFile.c_str()), modelFile.size());
 	staticmesh.Load(tmpStr1, texDirectory);
 
@@ -60,7 +59,7 @@ void Player::Init()
 	vector<MATERIAL> materials = staticmesh.GetMaterials();
 
 	// マテリアル数分ループ
-	for (int i = 0; i < materials.size(); i++)
+	for (int i = 0; i < materials.size(); ++i)
 	{
 		// マテリアルオブジェクト生成
 		std::unique_ptr<Material> m = std::make_unique<Material>();
@@ -167,9 +166,8 @@ void Player::Update()
 		testCol.center = testPos;
 
 		for (auto& wb : weakBlocks) {
-			if (auto b = wb.lock()) {
-				// Block 側に Collider 取得のアクセサが必要：
-				//   const SimpleBoxCollider& Block::GetCollider() const（ColliderObject 経由でOK）
+			if (auto b = wb.lock()) 
+			{
 				if (testCol.CheckCollision(b->GetCollider())) {
 					return true; // 1つでも当たれば衝突
 				}
@@ -185,10 +183,6 @@ void Player::Update()
 		auto test = desired; test.x += movement.x;
 		if (!collidesAt(test)) desired.x = test.x; // 当たらなければ反映
 	}
-	if (movement.y != 0.0f) {
-		auto test = desired; test.y += movement.y;
-		if (!collidesAt(test)) desired.y = test.y;
-	}
 	if (movement.z != 0.0f) {
 		auto test = desired; test.z += movement.z;
 		if (!collidesAt(test)) desired.z = test.z;
@@ -198,8 +192,6 @@ void Player::Update()
 	m_Position = desired;
 	collider.center = m_Position;
 }
-
-
 
 
 //=======================================

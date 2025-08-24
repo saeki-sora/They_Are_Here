@@ -41,21 +41,16 @@ void Game::Init()
 // 更新
 void Game::Update()
 {
-	// シーン更新
-	m_Scene->Update();
+	m_Scene->Update();// シーン更新
 
-	// カメラ更新
-	m_MainCamera->Update();
+	m_Input->Update();// 入力処理更新
 
-	// 入力処理更新
-	m_Input->Update();
-
-
-	// オブジェクト更新
-	for (auto& o : m_Objects)
+	for (auto& o : m_Objects)// オブジェクト更新
 	{
 		o->Update();
 	}
+
+	m_MainCamera->Update(); // カメラ更新
 }
 
 // 描画

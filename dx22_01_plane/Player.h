@@ -31,8 +31,8 @@ private:
 public:
 
 	Player(
-		const DirectX::SimpleMath::Vector3& pos = { 0, 50, 0 },
-		const DirectX::SimpleMath::Vector3& size = { 10, 10, 10 });//コンストラクタ
+		const DirectX::SimpleMath::Vector3& pos,
+		const DirectX::SimpleMath::Vector3& size);//コンストラクタ
 
 	~Player(); // デストラクタ
 

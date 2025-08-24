@@ -5,6 +5,7 @@
 #include"Pole.h"
 #include "Player.h"
 #include <cassert>
+#include "Enemy.h"
 
 
 MakeMap::MakeMap()
@@ -19,9 +20,10 @@ void MakeMap::Create()
 	Init();//マップ全体を初期化
 	MakeWall();//壁を生成
 	ResizeBlocks(wallCount); // 壁の数に応じてブロックをリサイズ
+	SettingBlocks(); // ブロックを配置
 	Set_Start_Goal();//スタートとゴールの座標を設定
 
-	//出来た迷路をcoutで表示
+	//デバッグ用で出来た迷路をcoutで表示
 	for (int x = 0; x < MAP::Config::MaxX; ++x) {
 
 		for (int y = 0; y < MAP::Config::MaxY; ++y) {
@@ -31,7 +33,15 @@ void MakeMap::Create()
 		std::cout << std::endl;
 	}
 
-	SettingBlocks(); // ブロックを配置
+	//見やすい版
+	std::cout << "\n[Pretty Maze]\n";
+	for (int x = 0; x < MAP::Config::MaxX; ++x) {
+		for (int y = 0; y < MAP::Config::MaxY; ++y) {
+			std::cout << (MAP[x][y] == 1 ? "##" : "  ");
+		}
+		std::cout << '\n';
+	}
+
 }
 
 
@@ -287,8 +297,8 @@ void MakeMap::Set_Start_Goal() {
 			int max_x = x;
 			int max_y = y;
 
-			for (int i = 0; i < MAP::Config::MaxX; i++) {
-				for (int j = 0; j < MAP::Config::MaxY; j++) {
+			for (int i = 0; i < MAP::Config::MaxX; ++i) {
+				for (int j = 0; j < MAP::Config::MaxY; ++j) {
 					if (MAP[i][j] == 0) {
 						int distance = abs(x - i) + abs(y - j); // マンハッタン距離を計算
 
@@ -310,27 +320,51 @@ void MakeMap::Set_Start_Goal() {
 				StartY = y;
 				GoalX = max_x;
 				GoalY = max_y;
-				
+
+				// 敵のスタート位置を設定
+				int max_distance_e = 0;
+				// スタート地点から最も遠い通路を探す
+				for (int i = 0; i < MAP::Config::MaxX; ++i) {
+					for (int j = 0; j < MAP::Config::MaxY; ++j) {
+						if (MAP[i][j] == 0 && (i != GoalX || j != GoalY))// ゴール地点以外
+						{ 
+							int distance = abs(StartX - i) + abs(StartY - j);
+							if (distance > max_distance_e) {
+								max_distance_e = distance;
+								EnemyStartX = i;
+								EnemyStartY = j;
+							}
+						}
+					}
+				}
+
+				//全員の生成処理
 				const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
 				const float MAP_CENTER_X = MAP::Config::MaxX / 2.0f * MAP::Config::BLOCK_SIZE;
 				const float MAP_CENTER_Y = MAP::Config::MaxY / 2.0f * MAP::Config::BLOCK_SIZE;
 
-				// スタートの位置にカメラの位置を設定
-				float posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * StartX));
-				float posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * StartY));
-				float posY = 0.0f; // 高さ
+				// プレイヤー生成
+				float p_posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * StartX));
+				float p_posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * StartY));
+				Game::GetInstance().AddObject<Player>(Vector3(p_posX, 0.0f, p_posZ), Vector3(1.0f, 0.3f, 1.0f));
 
-				//プレイヤー生成
-				Vector3 playerPos(posX, posY, posZ);
-				Game::GetInstance().AddObject<Player>(playerPos, { 1.0f, 0.3f, 1.0f });
+				// ゴール生成
+				float g_posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * GoalX));
+				float g_posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * GoalY));
+				GoleSize = { MAP::Config::BLOCK_SIZE / 2.0f , MAP::Config::BLOCK_SIZE * 2.0f, MAP::Config::BLOCK_SIZE / 2.0f };
+				Game::GetInstance().AddObject<Pole>(Vector3(g_posX, 0.0f, g_posZ), GoleSize);
 
-				//ゴールの位置を設定
-				posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * GoalX));
-				posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * GoalY));
-				Vector3 goalPos(posX, posY, posZ);
-				Game::GetInstance().AddObject<Pole>(goalPos, GoleSize);
+				// 敵生成
+				float e_posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * EnemyStartX));
+				float e_posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * EnemyStartY));
+				auto enemy_weak = Game::GetInstance().AddObject<Enemy>(Vector3(e_posX, 0.0f, e_posZ), Vector3(5.0f, 1.0f, 5.0f));
+				if (auto enemy_shared = enemy_weak.lock())
+				{
+					// 生成した敵に、このMakeMapインスタンス自身へのポインタを渡す
+					enemy_shared->SetMap(this);
+				}
 
-				break;
+				break;// 全員配置完了したらループを抜ける
 			}
 		}
 	}
@@ -352,7 +386,7 @@ void MakeMap::SettingBlocks()
 	const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;// ブロックの半分のサイズを計算
 	const float MAP_CENTER_X = MAP::Config::MaxX / 2.0f * MAP::Config::BLOCK_SIZE;// マップの中心座標を計算
 	const float MAP_CENTER_Y = MAP::Config::MaxY / 2.0f * MAP::Config::BLOCK_SIZE;
-	DirectX::SimpleMath::Vector3 blockSize(HALF_BLOCK, HALF_BLOCK, HALF_BLOCK);// ブロックのサイズを設定
+	DirectX::SimpleMath::Vector3 blockSize(HALF_BLOCK, MAP::Config::BLOCK_SIZE, HALF_BLOCK);// ブロックのサイズを設定
 
 	for (int x = 0; x < MAP::Config::MaxX; ++x) {
 
