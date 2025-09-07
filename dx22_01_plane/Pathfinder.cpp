@@ -3,6 +3,7 @@
 #include <queue>
 #include <unordered_map>
 #include <functional>
+#include <cmath>
 
 using DirectX::SimpleMath::Vector3;
 
@@ -113,28 +114,41 @@ std::vector<GridCoord> Pathfinder::FindPath(const MakeMap* map,
 
 Vector3 Pathfinder::GridToWorld(const MakeMap* map, const GridCoord& coord)
 {
-	// グリッド(0,0)が負の半範囲に整列するようにオフセットを計算
-	float halfX = static_cast<float>(MAP::Config::MaxX) * MAP::Config::BLOCK_SIZE * 0.5f;
-	float halfY = static_cast<float>(MAP::Config::MaxY) * MAP::Config::BLOCK_SIZE * 0.5f;
-	float worldX = coord.x * MAP::Config::BLOCK_SIZE - halfX + MAP::Config::BLOCK_SIZE * 0.5f;
-	float worldZ = coord.y * MAP::Config::BLOCK_SIZE - halfY + MAP::Config::BLOCK_SIZE * 0.5f;
+	// MakeMapの計算式を完全にコピー＆ペーストする
+	const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
+	const float MAP_CENTER_X = MAP::Config::MaxX / 2.0f * MAP::Config::BLOCK_SIZE;
+	const float MAP_CENTER_Y = MAP::Config::MaxY / 2.0f * MAP::Config::BLOCK_SIZE;
+
+	float worldX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * coord.x));
+	float worldZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * coord.y));
+
 	return Vector3(worldX, 0.0f, worldZ);
 }
 
 GridCoord Pathfinder::WorldToGrid(const MakeMap* map, const Vector3& pos)
 {
-	float halfX = static_cast<float>(MAP::Config::MaxX) * MAP::Config::BLOCK_SIZE * 0.5f;
-	float halfY = static_cast<float>(MAP::Config::MaxY) * MAP::Config::BLOCK_SIZE * 0.5f;
-	int x = static_cast<int>((pos.x + halfX) / MAP::Config::BLOCK_SIZE);
-	int y = static_cast<int>((pos.z + halfY) / MAP::Config::BLOCK_SIZE);
+	// GridToWorldから導出した、数学的に正しい逆算式
+	const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
+	const float MAP_CENTER_X = MAP::Config::MaxX / 2.0f * MAP::Config::BLOCK_SIZE;
+	const float MAP_CENTER_Y = MAP::Config::MaxY / 2.0f * MAP::Config::BLOCK_SIZE;
+
+	// X座標の逆算
+	float gridX_f = ((HALF_BLOCK + MAP_CENTER_X) - pos.x) / MAP::Config::BLOCK_SIZE;
+
+	// Z座標の逆算 (マイナス符号の処理を正しく行う)
+	float gridY_f = ((-pos.z - HALF_BLOCK + MAP_CENTER_Y)) / MAP::Config::BLOCK_SIZE;
+
+	int x = static_cast<int>(std::round(gridX_f));
+	int y = static_cast<int>(std::round(gridY_f));
+
 	// 境界内にクランプ
 	x = std::clamp(x, 0, static_cast<int>(MAP::Config::MaxX) - 1);
 	y = std::clamp(y, 0, static_cast<int>(MAP::Config::MaxY) - 1);
+
 	return { x, y };
 }
 
-std::vector<Vector3> Pathfinder::SmoothPath(
-	const std::vector<Vector3>& path,
+std::vector<Vector3> Pathfinder::SmoothPath(const std::vector<Vector3>& path,
 	const std::function<bool(const Vector3&, const Vector3&)>& isWalkable)
 {
 	if (path.size() < 3)

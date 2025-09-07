@@ -6,6 +6,7 @@
 #include "Player.h"
 #include <cassert>
 #include "Enemy.h"
+#include"Pathfinder.h"
 
 
 MakeMap::MakeMap()

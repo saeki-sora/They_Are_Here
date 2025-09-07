@@ -57,7 +57,7 @@ private:
 
     GridCoord m_CurrentSearchTarget = { -1, -1 };//探索状態のとき、今向かってるターゲットの座標
 
-    DirectX::SimpleMath::Vector3 m_LastPlayerPos = { 0.0f, 0.0f, 0.0f };
+    DirectX::SimpleMath::Vector3 m_LastPlayerPos = { 0.0f, 0.0f, 0.0f };//最後にプレイヤーがいた位置
 
     float m_MoveSpeed = 0.4f;//敵の移動速度
     float m_DetectionRadius = 80.0f;//敵の視認半径
