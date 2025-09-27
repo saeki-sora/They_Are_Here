@@ -1,6 +1,5 @@
 #include "MakeMap.h"
 #include "ColliderObject.h"
-#include"Game.h"
 #include"Block.h"
 #include"Pole.h"
 #include "Player.h"
@@ -10,17 +9,17 @@
 
 
 MakeMap::MakeMap()
-	: gen(rd())  //シードを初期化
-	, dir_dist(0, 3)  //方向用
-	, pos_x_dist(0, MAP::Config::MaxX - 1)
-	, pos_y_dist(0, MAP::Config::MaxY - 1)
+	: gen(rd()),
+	dir_dist(0, 3),
+	pos_x_dist(0, MAP::Config::MaxX - 1),
+	pos_y_dist(0, MAP::Config::MaxY - 1),
+	dir(Up)
 {}
 
-void MakeMap::Create()
+void MakeMap::CreatePlan()
 {
 	Init();//マップ全体を初期化
 	MakeWall();//壁を生成
-	ResizeBlocks(wallCount); // 壁の数に応じてブロックをリサイズ
 	SettingBlocks(); // ブロックを配置
 	Set_Start_Goal();//スタートとゴールの座標を設定
 
@@ -42,6 +41,30 @@ void MakeMap::Create()
 		}
 		std::cout << '\n';
 	}
+
+}
+
+void MakeMap::SpawnObjects(SceneBase* scene)
+{
+	// ブロック生成
+	for (const auto& blockSpec : plan.blocks) 
+	{
+		scene->AddObject<Block>(blockSpec.pos, blockSpec.size);
+	}
+
+	// ゴール生成
+	scene->AddObject<Pole>(plan.goalPos, plan.goalSize);
+
+	// 敵生成
+	auto enemyWeak = scene->AddObject<Enemy>(plan.enemyPos, plan.enemySize);
+	if (auto enemyShared = enemyWeak.lock())
+	{
+		// 生成した敵に、このMakeMapインスタンス自身へのポインタを渡す
+		enemyShared->SetMap(this);
+	}
+
+	// プレイヤー生成
+	scene->AddObject<Player>(plan.playerPos, plan.playerSize);
 
 }
 
@@ -278,7 +301,8 @@ void MakeMap::WallCompleteCheck() {
 //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
 //スタートとゴールの座標を設定
 //＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
-void MakeMap::Set_Start_Goal() {
+void MakeMap::Set_Start_Goal() 
+{
 
 	// ループの上限を設定して無限ループを防止
 	int max_attempts = 100;
@@ -347,25 +371,23 @@ void MakeMap::Set_Start_Goal() {
 				// プレイヤー生成
 				float p_posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * StartX));
 				float p_posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * StartY));
-				Game::GetInstance().AddObject<Player>(Vector3(p_posX, 0.0f, p_posZ), Vector3(1.0f, 0.3f, 1.0f));
+				plan.playerPos = Vector3(p_posX, 0.0f, p_posZ);
+				plan.playerSize = Vector3(1.0f, 0.3f, 1.0f);
 
 				// ゴール生成
 				float g_posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * GoalX));
 				float g_posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * GoalY));
 				GoleSize = { MAP::Config::BLOCK_SIZE / 2.0f , MAP::Config::BLOCK_SIZE * 2.0f, MAP::Config::BLOCK_SIZE / 2.0f };
-				Game::GetInstance().AddObject<Pole>(Vector3(g_posX, 0.0f, g_posZ), GoleSize);
+				plan.goalPos = Vector3(g_posX, 0.0f, g_posZ);
+				plan.goalSize = GoleSize;
 
 				// 敵生成
 				float e_posX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * EnemyStartX));
 				float e_posZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * EnemyStartY));
-				auto enemy_weak = Game::GetInstance().AddObject<Enemy>(Vector3(e_posX, 0.0f, e_posZ), Vector3(5.0f, 1.0f, 5.0f));
-				if (auto enemy_shared = enemy_weak.lock())
-				{
-					// 生成した敵に、このMakeMapインスタンス自身へのポインタを渡す
-					enemy_shared->SetMap(this);
-				}
+				plan.enemyPos = Vector3(e_posX, 0.0f, e_posZ);
+				plan.enemySize = Vector3(1.0f, 1.0f, 1.0f);
 
-				break;// 全員配置完了したらループを抜ける
+				break;// 全員位置決定したらループを抜ける
 			}
 		}
 	}
@@ -381,7 +403,7 @@ void MakeMap::ResizeBlocks(const std::uint16_t count)
 	blocks.shrink_to_fit();
 	blocks.reserve(count);// 壁の数を計算してメモリを事前確保
 }
-	
+
 void MakeMap::SettingBlocks()
 {
 	const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;// ブロックの半分のサイズを計算
@@ -408,8 +430,9 @@ void MakeMap::SettingBlocks()
 
 			DirectX::SimpleMath::Vector3 position(posX, posY, posZ);
 
-			blocks.emplace_back(Game::GetInstance().AddObject<Block>(position, blockSize));
+			plan.blocks.push_back(BlockSpec{x, y,position,blockSize});
 
 		}
 	}
 }
+

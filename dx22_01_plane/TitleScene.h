@@ -1,20 +1,18 @@
 #pragma once
-#include "Scene.h"
+#include "SceneBase.h"
 #include "Object.h"
 
 // TitleSceneクラス
-class TitleScene : public Scene
+class TitleScene : public SceneBase
 {
 private:
-	std::vector<std::weak_ptr<Object>> m_MySceneObjects; // このシーンのオブジェクト
-
-	void Init(); // 初期化
-	void Uninit(); // 終了処理
 
 public:
-	TitleScene(); // コンストラクタ
-	~TitleScene(); // デストラクタ
+	TitleScene() = default; // コンストラクタ
+	~TitleScene() = default; // デストラクタ
 
-	void Update(); // 更新
+	void OnInit() override;
+	void OnUpdate(float deltaTime) override;
+	void OnUnload() override;
 };
 

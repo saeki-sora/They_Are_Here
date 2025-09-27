@@ -9,34 +9,22 @@
 #include <unordered_map>
 #include "Camera.h"
 #include "Input.h"
-#include "TitleScene.h"
-#include "Stage1Scene.h"
-#include "ResultScene.h"
 #include "Object.h"
 
 using namespace DirectX::SimpleMath;
 
 //シングルトンパターンでゲームクラスを定義
-
-// シーン名を列挙型で定義
-enum class SceneName {
-	TITLE,
-	STAGE1,
-	RESULT
-};
-
 class Game
 {
 private:
 	Game(); // コンストラクタ
 	~Game(); // デストラクタ
 
-	std::unique_ptr<Scene> m_Scene; // シーン
 	std::vector<std::shared_ptr<Object>> m_Objects; // オブジェクト
 	std::unique_ptr<Input> m_Input;  // 入力処理
 	std::unique_ptr<Camera> m_MainCamera; // カメラ
 
-	// キャッシュ無効化フラグ（グローバル）
+	// キャッシュ無効化フラグ
 	mutable bool m_CacheValid = false;
 
 	void InvalidateCache() { m_CacheValid = false; } // キャッシュを無効化する
@@ -50,10 +38,9 @@ public:
 	Game& operator=(const Game&) = delete;
 
 	void Init();
-	void Update(); 
+	void Update(float); 
 	void Draw();
 	void Uninit();
-	void ChangeScene(SceneName sName); // シーンを変更
 
 	// オブジェクトの管理
 	void DeleteObject(std::weak_ptr<Object> weak_pt); // オブジェクトを削除する
@@ -139,3 +126,4 @@ public:
 		return cachedResults;// キャッシュされた結果を返す
 	}
 };
+

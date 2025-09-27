@@ -4,55 +4,55 @@
 #include"VisualObject.h"
 #include"Pole.h"
 #include"Block.h"
-#include"Skybox.h"
 #include "Player.h"
+#include "SkyDome.h"
+#include"EffectManager.h"
+#include "FadeEffect.h"
+#include "SceneManager.h"
+#include "ResultScene.h"
+#include "FadeTransition.h"
 
 using namespace DirectX::SimpleMath;
 
-// コンストラクタ
-Stage1Scene::Stage1Scene()
+
+//バッググラウンド処理
+void Stage1Scene::OnLoad()
 {
-	Init();
+	m_MakeMap.CreatePlan();
 }
 
-// デストラクタ
-Stage1Scene::~Stage1Scene()
-{
-	Uninit();
-}
 
 // 初期化
-void Stage1Scene::Init()
+void Stage1Scene::OnInit()
 {
-	m_Par = 4;
-	m_StrokeCount = 0;
+	auto skyDomePtr = AddObject<SkyDome>();
+	if (auto sky = skyDomePtr.lock()) // weak_ptrからshared_ptrを取得
+	{
+		sky->SetScale(1000.0f, 1000.0f, 1000.0f);
+		sky->SetTexture("assets/texture/sky.png");
+	}
 
-	////スカイドーム配置
-	//Skybox* sky = Game::GetInstance().AddObject<Skybox>();
-	//sky->SetTexture("assets/texture/sky.dds");
-	//m_MySceneObjects.emplace_back(sky);
-
-	m_MakeMap.Create(); // マップ生成クラスの初期化
-
-
+	m_MakeMap.SpawnObjects(this); //オブジェクト生成
+	
 }
 
+
+
 //更新
-void Stage1Scene::Update()
+void Stage1Scene::OnUpdate(float deltaTime)
 {
 	//Rキーを押してリザルトへ
 	if (Input::GetKeyTrigger(VK_R))
 	{
-		Game::GetInstance().ChangeScene(SceneName::RESULT);
+		SceneManager::GetInstance().ChangeScene<ResultScene>(
+			std::make_unique<FadeTransition>(1.0f)); // 1秒のフェードで遷移
 	}
 }
 
 // 終了処理
-void Stage1Scene::Uninit()
+void Stage1Scene::OnUnload()
 {
-	// このシーンのオブジェクトを削除する
-	for (auto& o : m_MySceneObjects) {
-		Game::GetInstance().DeleteObject(o);
-	}
+
 }
+
 

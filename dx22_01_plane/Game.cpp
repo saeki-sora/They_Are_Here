@@ -1,7 +1,12 @@
 #include "Game.h"
 #include "Renderer.h"
 #include"SimpleBoxCollider.h"
-#include "Skybox.h"
+#include "EffectManager.h"
+#include "FadeEffect.h"
+#include "SceneManager.h"
+#include "TitleScene.h"
+#include "Stage1Scene.h"
+#include "ResultScene.h"
 
 // コンストラクタ
 Game::Game()
@@ -13,7 +18,7 @@ Game::Game()
 // デストラクタ
 Game::~Game()
 {
-	m_Scene.reset();
+
 }
 
 // インスタンスを取得
@@ -26,62 +31,46 @@ Game& Game::GetInstance()
 // 初期化
 void Game::Init()
 {
-	// 描画初期化
-	Renderer::Init();
+	Renderer::Init();// 描画初期化
+	m_MainCamera->Init();// カメラ初期化
 
-	// カメラ初期化
-	m_MainCamera->Init();
-
-	m_Scene = std::make_unique<TitleScene>();
+	SceneManager::GetInstance().Init();
+	SceneManager::GetInstance().RegisterScene<TitleScene>();
+	SceneManager::GetInstance().RegisterScene<Stage1Scene>();
+	SceneManager::GetInstance().RegisterScene<ResultScene>();
+	SceneManager::GetInstance().ChangeScene<TitleScene>();
 
 	SimpleBoxCollider::InitDebugDraw(Renderer::GetDevice(), Renderer::GetDeviceContext()); // コライダーの初期化
+	EffectManager::GetInstance().Init();//エフェクトの初期化
 
 }
 
 // 更新
-void Game::Update()
+void Game::Update(float deltaTime)
 {
-	m_Scene->Update();// シーン更新
-
 	m_Input->Update();// 入力処理更新
+	EffectManager::GetInstance().Update();//エフェクト更新
 
-	for (auto& o : m_Objects)// オブジェクト更新
-	{
-		o->Update();
-	}
+	SceneManager::GetInstance().Update(deltaTime);
 
-	m_MainCamera->Update(); // カメラ更新
+	m_MainCamera->Update();
 }
 
 // 描画
 void Game::Draw()
 {
-
 	// 描画前処理
 	Renderer::Begin();
 
 	// ===== 3D描画パス =====
-	m_MainCamera->SetCamera(0);
-
-	// オブジェクト描画
-	for (auto& obj : m_Objects)
-	{
-		if (obj->Is3D()) // ← 描画タイプ判定
-		{
-			obj->Draw();
-		}
-	}
+	SceneManager::GetInstance().Draw();
 
 	// ===== 2D描画パス =====
-	m_MainCamera->SetCamera(1); // 2Dカメラに設定
+	SceneManager::GetInstance().DrawUI();
 
-	for (auto& obj : m_Objects)
-	{
-		if (!obj->Is3D())
-		{
-			obj->Draw();
-		}
-	}
+	EffectManager::GetInstance().Draw();//エフェクト描画
+
+	SceneManager::GetInstance().DrawTransition();//トランジション描画
 
 	// 描画後処理
 	Renderer::End();
@@ -90,12 +79,12 @@ void Game::Draw()
 // 終了処理
 void Game::Uninit()
 {
-
-	// シーン終了処理
-	m_Scene.reset();
+	SceneManager::GetInstance().Uninit();
 
 	//オブジェクトを全て削除
 	DeleteAllObject();
+
+	EffectManager::GetInstance().Uninit();
 
 	// カメラ終了処理
 	m_MainCamera->Uninit();
@@ -105,37 +94,15 @@ void Game::Uninit()
 }
 
 
-// シーンを切り替える
-void Game::ChangeScene(SceneName sName)
-{
-
-	// 読み込み済みのシーンがあれば削除
-	if (m_Scene != nullptr) 
-	{
-		m_Scene.reset();
-	}
-
-	switch (sName)
-	{
-	case SceneName::TITLE:
-		m_Scene = std::make_unique<TitleScene>();
-		break;
-	case SceneName::STAGE1:
-		m_Scene = std::make_unique<Stage1Scene>();
-		break;
-	case SceneName::RESULT:
-		m_Scene = std::make_unique<ResultScene>();
-		break;
-	}
-}
-
 // オブジェクトを削除する
 void Game::DeleteObject(std::weak_ptr<Object> weak_pt)
 {
-	if (auto shared_pt = weak_pt.lock()) {
+	if (auto shared_pt = weak_pt.lock())
+	{
 		auto it = std::find(m_Objects.begin(), m_Objects.end(), shared_pt);
 
-		if (it != m_Objects.end()) {
+		if (it != m_Objects.end()) 
+		{
 			(*it)->Uninit();
 			m_Objects.erase(it);
 		}
@@ -176,3 +143,4 @@ void Game::CleanupDeadObjects()
 		InvalidateCache();
 	}
 }
+

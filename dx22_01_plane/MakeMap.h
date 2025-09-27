@@ -2,18 +2,39 @@
 #include <vector>
 #include"ColliderObject.h"
 #include"Block.h"
-
 #include <random>
+#include"SceneBase.h"
 
 //マップは壁のばし法を用いて生成した迷路を２次元配列に格納
-
 namespace MAP {
 
 	struct Config {
-		static constexpr std::uint16_t MaxX = 11;//横セル数（X方向）必ず奇数にすること
-		static constexpr std::uint16_t MaxY = 11;//縦セル数（Y方向）
+		static constexpr std::uint16_t MaxX = 21;//横セル数（X方向）必ず奇数にすること
+		static constexpr std::uint16_t MaxY = 21;//縦セル数（Y方向）
 		static constexpr float  BLOCK_SIZE = 55.0f; //１セルあたりの物理サイズ
 	};
+};
+
+
+struct BlockSpec 
+{
+	int gridX, gridY; // 迷路のグリッド座標
+	DirectX::SimpleMath::Vector3 pos;
+	DirectX::SimpleMath::Vector3 size;
+};
+
+struct MapBuildPlan 
+{
+	int map[MAP::Config::MaxX][MAP::Config::MaxY];
+	DirectX::SimpleMath::Vector3 playerPos;
+	DirectX::SimpleMath::Vector3 playerSize;
+	DirectX::SimpleMath::Vector3 enemyPos;
+	DirectX::SimpleMath::Vector3 enemySize;
+	DirectX::SimpleMath::Vector3 startPos;
+	DirectX::SimpleMath::Vector3 startSize;
+	std::vector<BlockSpec> blocks; // 置くべきブロックの一覧
+	DirectX::SimpleMath::Vector3 goalPos;
+	DirectX::SimpleMath::Vector3 goalSize;
 };
 
 class MakeMap
@@ -32,21 +53,22 @@ private:
 	// 迷路盤面の座標は構造体で管理
 	struct MakeNowPosition {
 
-		std::uint16_t x;
-		std::uint16_t y;
+		std::uint16_t x{};
+		std::uint16_t y{};
 	};
 
 	// 迷路盤
-	int MAP[MAP::Config::MaxX][MAP::Config::MaxY]; // 1:壁, 0:通路
-	int NowX, NowY;                                //計算の際の一時的な現在のポジション
-	int StartX, StartY, GoalX, GoalY;              //スタートとゴールの座標
-	std::uint16_t PlayerPosX, PlayerPosY;          //プレイヤーの座標
-	int EnemyStartX, EnemyStartY;                  //敵のスタート座標
+	int MAP[MAP::Config::MaxX][MAP::Config::MaxY]{}; // 1:壁, 0:通路
+	int NowX = 0, NowY = 0;                                //計算の際の一時的な現在のポジション
+	int StartX = 0, StartY = 0, GoalX = 0, GoalY = 0;              //スタートとゴールの座標
+	std::uint16_t PlayerPosX = 0, PlayerPosY = 0;          //プレイヤーの座標
+	int EnemyStartX = 0, EnemyStartY = 0;                  //敵のスタート座標
 	direction dir;                                 //前回の進んだ方向
 	std::uint16_t wallCount = 0;                   // 壁の数をカウントする変数
 	std::vector<std::weak_ptr<Block>> blocks;                    // 複数のブロックを格納するベクター
+	DirectX::SimpleMath::Vector3 GoleSize{}; //ゴールのサイズ
 
-	DirectX::SimpleMath::Vector3 GoleSize; //ゴールのサイズ
+	MapBuildPlan plan;
 
 	// 乱数生成器とディストリビューション
 	mutable std::random_device rd;
@@ -57,10 +79,10 @@ private:
 
 	void Init();
 	void MakeWall(); //壁を生成
-	void Set_Start_Goal(); //スタートとゴールの座標を設定
 	direction Decide_Direction()const;//上下左右どちらに壁を作るか決める
 	void WallCompleteCheck();//上下左右が全て作成中の壁ではないか確認
 	void ResizeBlocks(const std::uint16_t);//ブロックを作成
+	void Set_Start_Goal();//スタートとゴールの座標を設定
 	void SettingBlocks();//ブロックを配置
 
 public:
@@ -74,7 +96,8 @@ public:
 	MakeMap(MakeMap&&) = delete;
 	MakeMap& operator=(MakeMap&&) = delete;
 
-	void Create();//マップを生成
+	void CreatePlan();//各オブジェクトの配置情報を作成
+	void SpawnObjects(SceneBase* scene);//マップオブジェクトを生成してシーンに追加
 
 	const std::vector<std::weak_ptr<Block>>& GetBlocks() const { return blocks; }//全ブロックを取得
 

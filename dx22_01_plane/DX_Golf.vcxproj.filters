@@ -61,15 +61,27 @@
     <Filter Include="ソース ファイル\Object\Enemy">
       <UniqueIdentifier>{c4480c77-afb6-4dac-8ee6-4455dae49f60}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\Effect">
+      <UniqueIdentifier>{28df334a-237b-47a5-949b-b6f34858a83f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Effect">
+      <UniqueIdentifier>{234cb0a3-9cf5-466c-90e0-f0bb29f452b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Object\2D">
+      <UniqueIdentifier>{462f8ffb-7b88-4da7-8598-37e711ee9109}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Object\2D">
+      <UniqueIdentifier>{4064cbdc-b518-4ed6-abae-a94cc040f8fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene\Transition">
+      <UniqueIdentifier>{28d9a20c-ca57-441a-bdd8-233453155801}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene\Transition">
+      <UniqueIdentifier>{bbf4d6a4-07d9-4cd2-afd8-75ad1e7b6195}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="StaticMesh.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="utility.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="AssimpPerse.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="Camera.cpp">
@@ -89,9 +101,6 @@
     </ClCompile>
     <ClCompile Include="dx11helper.cpp">
       <Filter>ソース ファイル\DX</Filter>
-    </ClCompile>
-    <ClCompile Include="Scene.cpp">
-      <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Stage1Scene.cpp">
       <Filter>ソース ファイル\Scene</Filter>
@@ -129,9 +138,6 @@
     <ClCompile Include="TestCube.cpp">
       <Filter>ソース ファイル\Object</Filter>
     </ClCompile>
-    <ClCompile Include="TestModel.cpp">
-      <Filter>ソース ファイル\Object</Filter>
-    </ClCompile>
     <ClCompile Include="TestPlane.cpp">
       <Filter>ソース ファイル\Object</Filter>
     </ClCompile>
@@ -147,13 +153,7 @@
     <ClCompile Include="MakeMap.cpp">
       <Filter>ソース ファイル\Map</Filter>
     </ClCompile>
-    <ClCompile Include="VisualObject.cpp">
-      <Filter>ソース ファイル\Object</Filter>
-    </ClCompile>
     <ClCompile Include="Block.cpp">
-      <Filter>ソース ファイル\Object</Filter>
-    </ClCompile>
-    <ClCompile Include="Skybox.cpp">
       <Filter>ソース ファイル\Object</Filter>
     </ClCompile>
     <ClCompile Include="ColliderObject.cpp">
@@ -186,11 +186,47 @@
     <ClCompile Include="EnemyState_Lost.cpp">
       <Filter>ソース ファイル\Object\Enemy</Filter>
     </ClCompile>
+    <ClCompile Include="SkyDome.cpp">
+      <Filter>ソース ファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="VisualObject.cpp">
+      <Filter>ソース ファイル\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="EffectManager.cpp">
+      <Filter>ソース ファイル\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Effect.cpp">
+      <Filter>ソース ファイル\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="FadeEffect.cpp">
+      <Filter>ソース ファイル\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="UI_Result.cpp">
+      <Filter>ソース ファイル\Object\2D</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneManager.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneBase.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneTransition.cpp">
+      <Filter>ソース ファイル\Scene\Transition</Filter>
+    </ClCompile>
+    <ClCompile Include="FadeTransition.cpp">
+      <Filter>ソース ファイル\Scene\Transition</Filter>
+    </ClCompile>
+    <ClCompile Include="AssimpPerse.cpp">
+      <Filter>ソース ファイル\DX</Filter>
+    </ClCompile>
+    <ClCompile Include="StaticMesh.cpp">
+      <Filter>ソース ファイル\DX</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureManager.cpp">
+      <Filter>ソース ファイル\DX</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AssimpPerse.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
     <ClInclude Include="utility.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -199,9 +235,6 @@
     </ClInclude>
     <ClInclude Include="Terrain.h">
       <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Scene.h">
-      <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Stage1Scene.h">
       <Filter>ヘッダー ファイル\Scene</Filter>
@@ -278,9 +311,6 @@
     <ClInclude Include="VisualObject.h">
       <Filter>ヘッダー ファイル\Object</Filter>
     </ClInclude>
-    <ClInclude Include="TestModel.h">
-      <Filter>ヘッダー ファイル\Object</Filter>
-    </ClInclude>
     <ClInclude Include="Arrow.h">
       <Filter>ヘッダー ファイル\Object</Filter>
     </ClInclude>
@@ -288,9 +318,6 @@
       <Filter>ヘッダー ファイル\Object</Filter>
     </ClInclude>
     <ClInclude Include="TestCube.h">
-      <Filter>ヘッダー ファイル\Object</Filter>
-    </ClInclude>
-    <ClInclude Include="Skybox.h">
       <Filter>ヘッダー ファイル\Object</Filter>
     </ClInclude>
     <ClInclude Include="Object.h">
@@ -326,6 +353,39 @@
     <ClInclude Include="EnemyState_Lost.h">
       <Filter>ヘッダー ファイル\Object\Enemy</Filter>
     </ClInclude>
+    <ClInclude Include="SkyDome.h">
+      <Filter>ヘッダー ファイル\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="EffectManager.h">
+      <Filter>ヘッダー ファイル\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Effect.h">
+      <Filter>ヘッダー ファイル\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="FadeEffect.h">
+      <Filter>ヘッダー ファイル\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="UI_Result.h">
+      <Filter>ヘッダー ファイル\Object\2D</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneManager.h">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneBase.h">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneTransition.h">
+      <Filter>ヘッダー ファイル\Scene\Transition</Filter>
+    </ClInclude>
+    <ClInclude Include="FadeTransition.h">
+      <Filter>ヘッダー ファイル\Scene\Transition</Filter>
+    </ClInclude>
+    <ClInclude Include="AssimpPerse.h">
+      <Filter>ヘッダー ファイル\DX</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureManager.h">
+      <Filter>ヘッダー ファイル\DX</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shader\litTexturePS.hlsl">
@@ -343,10 +403,16 @@
     <FxCompile Include="shader\common.hlsl">
       <Filter>リソース ファイル</Filter>
     </FxCompile>
-    <FxCompile Include="skyboxVS.hlsl">
+    <FxCompile Include="shader\SkyDomeVS.hlsl">
       <Filter>リソース ファイル</Filter>
     </FxCompile>
-    <FxCompile Include="skyboxPS.hlsl">
+    <FxCompile Include="shader\SkyDomePS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\VS_Fade.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\PS_Fade.hlsl">
       <Filter>リソース ファイル</Filter>
     </FxCompile>
   </ItemGroup>

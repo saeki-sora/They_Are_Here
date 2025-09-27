@@ -22,7 +22,7 @@ protected:
 	Shader m_Shader; // シェーダー
 	std::vector<std::unique_ptr<Material>> m_Materiales;//マテリアル情報
 	std::vector<SUBSET> m_subsets;//サブセット情報
-	std::vector<std::unique_ptr<Texture>> m_Textures;//テクスチャ
+	std::vector<std::shared_ptr<Texture>> m_Textures;//テクスチャ
 
 	// 描画の為の情報（メッシュに関わる情報）
 	MeshRenderer m_MeshRenderer; // 頂点バッファ・インデックスバッファ・インデックス数

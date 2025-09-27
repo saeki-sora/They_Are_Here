@@ -35,7 +35,6 @@ void Block::Init()
 	std::string texDirectory = "assets/model/Block";
 
 	// Mesh‚ğ“Ç‚İ‚Ş
-
 	std::string tmpStr1(reinterpret_cast<const char*>(modelFile.c_str()), modelFile.size());
 	staticmesh.Load(tmpStr1, texDirectory);
 

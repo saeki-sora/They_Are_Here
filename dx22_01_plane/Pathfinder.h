@@ -22,13 +22,16 @@ class Pathfinder
 {
 public:
 
+    //グリッド座標の最短経路を返す
     static std::vector<GridCoord> FindPath(const MakeMap* map,
         const GridCoord& start,
         const GridCoord& goal);
 
+    // グリッド座標をワールド座標への変換
     static Vector3 GridToWorld(const MakeMap* map,
         const GridCoord& coord);
 
+    // ワールド座標をグリッド座標への変換
     static GridCoord WorldToGrid(const MakeMap* map,const Vector3& pos);
 
     static std::vector<Vector3> SmoothPath(
@@ -36,7 +39,8 @@ public:
         const std::function<bool(const Vector3&, const Vector3&)>& isWalkable);
 
 private:
-    // A*ヒューリスティック用の内部ヘルパー（マンハッタン距離）
+
+    // A*ヒューリスティック用のヘルパー（マンハッタン距離）
     static float Heuristic(const GridCoord& a, const GridCoord& b)
     {
         return static_cast<float>(std::abs(a.x - b.x) + std::abs(a.y - b.y));

@@ -1,21 +1,21 @@
 #include "VisualObject.h"
+#include <vector>
 
-using namespace std;
 using namespace DirectX::SimpleMath;
 
+//=======================================
 // コンストラクタ
-VisualObject::VisualObject(
-	const DirectX::SimpleMath::Vector3& pos,
-	const DirectX::SimpleMath::Vector3& size) 
-	:Object(pos,size)
+//=======================================
+VisualObject::VisualObject(const Vector3& pos, const Vector3& size)
+    : Object(pos, size) // 基底クラスであるObjectのコンストラクタを呼び出す
 {
-
 }
 
+//=======================================
 // デストラクタ
+//=======================================
 VisualObject::~VisualObject()
 {
-
 }
 
 //=======================================
@@ -23,51 +23,47 @@ VisualObject::~VisualObject()
 //=======================================
 void VisualObject::Init()
 {
-	// 頂点データ
-	std::vector<VERTEX_3D> vertices;
+    // このクラスの標準的な形状として、テクスチャを貼るための四角形（クアッド）を生成します。
+    // SkyDomeのような特殊な形状は、このInit()をオーバーライドして独自の頂点データを生成します。
 
-	vertices.resize(4);
+    // 1. 頂点データを作成 (中心が原点の1x1の四角形)
+    std::vector<VERTEX_3D> vertices(4);
+    vertices[0].position = Vector3(-0.5f, 0.5f, 0.0f); // 左上
+    vertices[0].normal = Vector3(0.0f, 0.0f, -1.0f);
+    vertices[0].color = Color(1, 1, 1, 1);
+    vertices[0].uv = Vector2(0, 0);
 
-	vertices[0].position = Vector3(-0.5f, 0.5f, 0);
-	vertices[1].position = Vector3(0.5f, 0.5f, 0);
-	vertices[2].position = Vector3(-0.5f, -0.5f, 0);
-	vertices[3].position = Vector3(0.5f, -0.5f, 0);
+    vertices[1].position = Vector3(0.5f, 0.5f, 0.0f); // 右上
+    vertices[1].normal = Vector3(0.0f, 0.0f, -1.0f);
+    vertices[1].color = Color(1, 1, 1, 1);
+    vertices[1].uv = Vector2(1, 0);
 
-	vertices[0].color = Color(1, 1, 1, 1);
-	vertices[1].color = Color(1, 1, 1, 1);
-	vertices[2].color = Color(1, 1, 1, 1);
-	vertices[3].color = Color(1, 1, 1, 1);
+    vertices[2].position = Vector3(-0.5f, -0.5f, 0.0f); // 左下
+    vertices[2].normal = Vector3(0.0f, 0.0f, -1.0f);
+    vertices[2].color = Color(1, 1, 1, 1);
+    vertices[2].uv = Vector2(0, 1);
 
-	vertices[0].uv = Vector2(0, 0);
-	vertices[1].uv = Vector2(1, 0);
-	vertices[2].uv = Vector2(0, 1);
-	vertices[3].uv = Vector2(1, 1);
+    vertices[3].position = Vector3(0.5f, -0.5f, 0.0f); // 右下
+    vertices[3].normal = Vector3(0.0f, 0.0f, -1.0f);
+    vertices[3].color = Color(1, 1, 1, 1);
+    vertices[3].uv = Vector2(1, 1);
 
-	// 頂点バッファ生成
-	m_VertexBuffer.Create(vertices);
+    m_VertexBuffer.Create(vertices);
 
-	// インデックスバッファ生成
-	std::vector<unsigned int> indices;
-	indices.resize(4);
+    // 2. インデックスデータを作成
+    std::vector<unsigned int> indices = { 0, 1, 2, 2, 1, 3 };
+    m_IndexBuffer.Create(indices);
 
-	indices[0] = 0;
-	indices[1] = 1;
-	indices[2] = 2;
-	indices[3] = 3;
+    // 3. シェーダーをShaderManagerから取得
+    // (ここでは基本的なテクスチャ付きシェーダーを指定)
+    m_Shader.Create("shader/unlitTextureVS.hlsl", "shader/unlitTexturePS.hlsl");
 
-	// インデックスバッファ生成
-	m_IndexBuffer.Create(indices);
-
-	// シェーダオブジェクト生成
-	m_Shader.Create("shader/unlitTextureVS.hlsl", "shader/unlitTexturePS.hlsl");
-
-	// マテリアル情報取得
-	m_Materiale = std::make_unique<Material>();
-	MATERIAL mtrl;
-	mtrl.Diffuse = Color(1, 1, 1, 1);
-	mtrl.Shiness = 1;
-	mtrl.TextureEnable = true; // テクスチャを使うか否かのフラグ
-	m_Materiale->Create(mtrl);
+    // 4. マテリアルを作成
+    m_Materiale = std::make_unique<Material>();
+    MATERIAL mtrl;
+    mtrl.Diffuse = Color(1, 1, 1, 1);
+    mtrl.TextureEnable = true; // テクスチャを有効にする
+    m_Materiale->Create(mtrl);
 }
 
 //=======================================
@@ -75,7 +71,7 @@ void VisualObject::Init()
 //=======================================
 void VisualObject::Update()
 {
-
+    // VisualObjectの派生クラスで必要に応じて実装
 }
 
 //=======================================
@@ -83,41 +79,34 @@ void VisualObject::Update()
 //=======================================
 void VisualObject::Draw()
 {
-	// SRT情報作成
-	Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.x, m_Rotation.y, m_Rotation.z);
-	Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
-	Matrix s = Matrix::CreateScale(m_Scale.x, m_Scale.y, m_Scale.z);
+    // SRT（スケール・回転・移動）情報からワールド行列を作成
+    Matrix s = Matrix::CreateScale(m_Scale);
+    Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
+    Matrix t = Matrix::CreateTranslation(m_Position);
+    Matrix worldMtx = s * r * t;
+    Renderer::SetWorldMatrix(&worldMtx);
 
-	Matrix worldmtx;
-	worldmtx = s * r * t;
-	Renderer::SetWorldMatrix(&worldmtx); // GPUにセット
+    ID3D11DeviceContext* context = Renderer::GetDeviceContext();
 
-	// 描画の処理
-	ID3D11DeviceContext* devicecontext;
-	devicecontext = Renderer::GetDeviceContext();
+    // プリミティブタイプを設定 (三角形リスト)
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	// トポロジーをセット（プリミティブタイプ）
-	devicecontext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    // 各種バッファやシェーダーをGPUにセット
+    m_Shader.SetGPU();
+    m_VertexBuffer.SetGPU();
+    m_IndexBuffer.SetGPU();
+    m_Texture.SetGPU();
+    m_Materiale->SetGPU();
 
-	m_Shader.SetGPU();
-	m_VertexBuffer.SetGPU();
-	m_IndexBuffer.SetGPU();
+    // UVアニメーション用の情報をRendererにセット
+    float u = m_NumU - 1;
+    float v = m_NumV - 1;
+    float uw = 1.0f / m_SplitX;
+    float vh = 1.0f / m_SplitY;
+    Renderer::SetUV(u, v, uw, vh);
 
-	m_Texture.SetGPU();
-	m_Materiale->SetGPU();
-
-	// UVの設定を指定
-	float u = m_NumU - 1;
-	float v = m_NumV - 1;
-	float uw = 1 / m_SplitX;
-	float vh = 1 / m_SplitY;
-
-	Renderer::SetUV(u, v, uw, vh);
-
-	devicecontext->DrawIndexed(
-		4, // 描画するインデックス数（四角形なんで４）
-		0, // 最初のインデックスバッファの位置
-		0);
+    // インデックスバッファの数だけ描画
+    context->DrawIndexed(6, 0, 0); // 四角形は6つのインデックスで描画
 }
 
 //=======================================
@@ -125,55 +114,59 @@ void VisualObject::Draw()
 //=======================================
 void VisualObject::Uninit()
 {
-
+    // 必要に応じてリソース解放処理などを記述
 }
 
-// テクスチャを指定
+//=======================================
+// セッター関数
+//=======================================
+
 void VisualObject::SetTexture(const char* imgname)
 {
-	// テクスチャロード
-	bool sts = m_Texture.Load(imgname);
-	assert(sts == true);
+    m_Texture.Load(imgname);
 }
 
-// 位置を指定
 void VisualObject::SetPosition(const float& x, const float& y, const float& z)
 {
-	Vector3 p = { x, y, z };
-	SetPosition(p);
+    m_Position = Vector3(x, y, z);
 }
+
 void VisualObject::SetPosition(const Vector3& pos)
 {
-	m_Position = pos;
+    // 基底クラスのセッターを呼び出す
+    Object::SetPosition(pos);
 }
 
-// 角度を指定
 void VisualObject::SetRotation(const float& x, const float& y, const float& z)
 {
-	Vector3 r = { x, y, z };
-	SetRotation(r);
+    // deg→radに変換して格納
+    m_Rotation = Vector3(
+        DirectX::XMConvertToRadians(x),
+        DirectX::XMConvertToRadians(y),
+        DirectX::XMConvertToRadians(z)
+    );
 }
+
 void VisualObject::SetRotation(const Vector3& rot)
 {
-	m_Rotation = rot * 3.14f / 180; // deg→radに変換
+    m_Rotation = rot;
 }
 
-// 大きさを指定
 void VisualObject::SetScale(const float& x, const float& y, const float& z)
 {
-	Vector3 s = { x, y, z };
-	SetScale(s);
-}
-void VisualObject::SetScale(const Vector3& scl)
-{
-	m_Scale = scl;
+    m_Scale = Vector3(x, y, z);
 }
 
-// UV座標を指定
+void VisualObject::SetScale(const Vector3& scl)
+{
+    // 基底クラスのセッターを呼び出す
+    Object::SetScale(scl);
+}
+
 void VisualObject::SetUV(const float& nu, const float& nv, const float& sx, const float& sy)
 {
-	m_NumU = nu;
-	m_NumV = nv;
-	m_SplitX = sx;
-	m_SplitY = sy;
+    m_NumU = nu;
+    m_NumV = nv;
+    m_SplitX = sx;
+    m_SplitY = sy;
 }

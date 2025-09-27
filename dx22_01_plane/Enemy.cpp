@@ -11,6 +11,8 @@
 #include <cmath>
 #include <SimpleMath.h>
 
+#define NOMINMAX
+
 using namespace DirectX::SimpleMath;
 
 Enemy::Enemy(const Vector3& pos, const Vector3& size)
@@ -32,6 +34,10 @@ void Enemy::Init()
 	staticmesh.Load(tmp, texDirectory);
 
 	m_MeshRenderer.Init(staticmesh);
+
+	//当たり判定用のサイズを設定
+	//collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
+
 	m_subsets = staticmesh.GetSubsets();
 	m_Textures = staticmesh.GetTextures();
 
@@ -50,6 +56,8 @@ void Enemy::Init()
 
 	// デフォルトで探索状態から開始
 	ChangeState(std::make_unique<EnemySearchState>());
+
+	m_FOVThreshold = std::cos(DirectX::XMConvertToRadians(80.0f * 0.5f));//80が視認範囲の半径
 }
 
 void Enemy::Update()
@@ -61,7 +69,7 @@ void Enemy::Update()
 		m_State->Update(this, dt);
 	}
 
-	FollowPath(dt);// パスに沿って移動
+	FollowPath();// パスに沿って移動
 }
 
 void Enemy::Draw()
@@ -86,6 +94,7 @@ void Enemy::Draw()
 			m_subsets[i].IndexBase,
 			m_subsets[i].VertexBase);
 	}
+
 #ifdef _DEBUG
 	Matrix colliderWorldMatrix = r * t;
 	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), colliderWorldMatrix);
@@ -94,7 +103,6 @@ void Enemy::Draw()
 
 void Enemy::Uninit()
 {
-	// 敵が破棄される際の状態クリーンアップ
 	m_State.reset();
 }
 
@@ -119,10 +127,6 @@ bool Enemy::ComputePathTo(const Vector3& target)
 	GridCoord start = Pathfinder::WorldToGrid(m_Map, m_Position);
 	GridCoord goal = Pathfinder::WorldToGrid(m_Map, target);
 
-	std::cout << "\n----- Computing Path -----\n";
-	std::cout << "My Position (World): (" << m_Position.x << ", " << m_Position.z << ")\n";
-	std::cout << "Start Grid: (" << start.x << ", " << start.y << ")\n";
-	std::cout << "Goal Grid: (" << goal.x << ", " << goal.y << ")\n";
 
 	//現在位置から目的地までのパスを計算
 	auto gridPath = Pathfinder::FindPath(m_Map, start, goal);
@@ -165,7 +169,7 @@ bool Enemy::ComputePathTo(const Vector3& target)
 	return !m_Waypoints.empty();//１つ以上のウェイポイントがあるならtrue
 }
 
-void Enemy::FollowPath(float deltaTime)
+void Enemy::FollowPath()
 {
 	if (m_Waypoints.empty()) { return; }
 
@@ -174,16 +178,12 @@ void Enemy::FollowPath(float deltaTime)
 	Vector3 toTarget = target - m_Position;
 	float distance = toTarget.Length();
 
-	std::cout << "Following Path... MyPos(" << m_Position.x << ", " << m_Position.z
-		<< ") Target(" << target.x << ", " << target.z
-		<< ") Dist: " << distance << std::endl;
-
 	if (distance < 1.0f)
 	{
 
 		std::cout << ">>> Reached Waypoint: (" << target.x << ", " << target.z << ") <<<\n";
 
-		// 到着；このウェイポイントを削除し、次に進む
+		//このウェイポイントを削除し、次に進む
 		m_Waypoints.pop_front();
 		if (!m_Waypoints.empty())
 		{
@@ -205,30 +205,31 @@ void Enemy::FollowPath(float deltaTime)
 bool Enemy::CanSeePlayer()
 {
 	auto playerWeak = Game::GetInstance().FindObject<Player>();
+
 	if (auto player = playerWeak.lock())
 	{
 		Vector3 playerPos = player->GetPosition();
-		Vector3 toPlayer = playerPos - m_Position;
+		Vector3 toPlayer = playerPos - m_Position;//敵からプレイヤーへのベクトル
+
 		float distance = toPlayer.Length();
-		if (distance > m_DetectionRadius)
-		{
-			return false;
-		}
 		toPlayer.Normalize();
-		// 視野をチェック。敵はrotation.yに沿って向いているため、前方向を計算
-		Vector3 forward = Vector3(std::sin(m_Rotation.y), 0.0f, std::cos(m_Rotation.y));
-		float dot = forward.Dot(toPlayer);
-		if (dot < m_FOVThreshold)
-		{
-			return false;
-		}
-		// 見通しをチェック
+
+		if (distance > m_DetectionRadius) return false;//視認範囲外ならfalse
+
+		Vector3 forward = Vector3(std::sin(m_Rotation.y), 0.0f, std::cos(m_Rotation.y));// 自分の正面方向のベクトルを計算
+		float dot = forward.Dot(toPlayer);//内積を計算(どれだけ同じ向きを向いているか)
+
+		if (dot < m_FOVThreshold) return false;// 視野外ならfalse
+
+		//プレイヤーとの間に障害物がないかチェック
 		if (HasLineOfSight(m_Position, playerPos))
 		{
 			m_LastPlayerPos = playerPos;
-			return true;
+			std::cout << "!!! プレイヤーみつけた !!!\n";
+			return true;//見えたらtrue
 		}
 	}
+
 	return false;
 }
 
@@ -291,6 +292,7 @@ bool Enemy::ChooseNextSearchTarget()
 	return false;
 }
 
+// 現在の探索ターゲットを訪問済みとしてマーク
 void Enemy::MarkTargetVisited()
 {
 	if (m_CurrentSearchTarget.x >= 0)
@@ -300,24 +302,72 @@ void Enemy::MarkTargetVisited()
 	}
 }
 
+
+
 bool Enemy::HasLineOfSight(const Vector3& a, const Vector3& b) const
 {
 	if (!m_Map) return false;
-	// ライン上を等間隔でサンプリング。ブロックサイズの半分でステップ
-	Vector3 dir = b - a;
-	float length = dir.Length();
+
+	Vector3 dir = b - a; float length = dir.Length();
+
 	int samples = static_cast<int>(length / (MAP::Config::BLOCK_SIZE * 0.5f));
-	if (samples < 1) return true;
-	dir /= static_cast<float>(samples);
-	Vector3 probe = a;
-	for (int i = 0; i <= samples; ++i)
+
+	if (samples < 1) return true; dir /= static_cast<float>(samples); 
+
+	Vector3 probe = a; 
+
+	for (int i = 0; i <= samples; ++i) 
 	{
 		GridCoord cell = Pathfinder::WorldToGrid(m_Map, probe);
-		if (!m_Map->IsWalkable(cell.x, cell.y))
-		{
-			return false;
-		}
+
+		if (!m_Map->IsWalkable(cell.x, cell.y)) { return false; }
+
 		probe += dir;
-	}
+	} 
+
 	return true;
 }
+
+//#undef min
+//#undef max
+//
+//
+//bool Enemy::HasLineOfSight(const Vector3& a, const Vector3& b, float margin) const
+//{
+//	if (!m_Map) return false;
+//
+//	Vector3 ab = b - a;
+//	float   len = ab.Length();
+//
+//	if (len < 1e-4f) return true;
+//
+//	// サンプリング間隔をやや細かく
+//	const float step = MAP::Config::BLOCK_SIZE * 0.33f;
+//
+//	int samples = std::max(1, (int)std::ceil(len / step));
+//	Vector3 dir = ab / (float)samples;
+//
+//	// 余白を「何セル分」見るか
+//	int marginCells = std::max(0, (int)std::ceil(margin / MAP::Config::BLOCK_SIZE));
+//
+//	Vector3 p = a;
+//	for (int i = 0; i <= samples; ++i)
+//	{
+//		GridCoord c = Pathfinder::WorldToGrid(m_Map, p);
+//
+//		// 余白分の近傍セルも壁なら遮蔽扱い
+//		for (int dx = -marginCells; dx <= marginCells; ++dx)
+//			for (int dy = -marginCells; dy <= marginCells; ++dy)
+//			{
+//				int nx = c.x + dx;
+//				int ny = c.y + dy;
+//				if (nx < 0 || ny < 0 || nx >= (int)MAP::Config::MaxX || ny >= (int)MAP::Config::MaxY)
+//					return false; // 境界外＝通れない
+//				if (!m_Map->IsWalkable(nx, ny))
+//					return false;
+//			}
+//
+//		p += dir;
+//	}
+//	return true;
+//}

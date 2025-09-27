@@ -122,6 +122,8 @@ public:
 	static DirectX::SimpleMath::Matrix GetViewMatrix(void){ return m_ViewMatrix; }
 	static DirectX::SimpleMath::Matrix GetProjectionMatrix(){ return m_ProjectionMatrix; }
 
+	static ID3D11DepthStencilView* GetDepthStencilView() { return m_DepthStencilView; }
+
 	static void CreateVertexShader(ID3D11VertexShader** VertexShader, ID3D11InputLayout** VertexLayout, const char* FileName);
 	static void CreatePixelShader(ID3D11PixelShader** PixelShader, const char* FileName);
 

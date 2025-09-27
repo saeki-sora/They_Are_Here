@@ -5,8 +5,10 @@
 #include "Game.h"
 #include "Collision.h"
 #include"Block.h"
-
+#include"Pole.h"
+#include"SceneManager.h"
 #include <type_traits>
+#include "ResultScene.h"
 
 using namespace std;
 using namespace DirectX::SimpleMath;
@@ -15,7 +17,7 @@ using namespace DirectX::SimpleMath;
 Player::Player(const Vector3& pos, const Vector3& size)
 	: ColliderObject(pos, size),
 	m_MouseSensitivity(0.003f),
-	m_MoveSpeed(6.5f),
+	m_MoveSpeed(4.5f),
 	m_MouseCaptured(true),
 	m_Forward(Vector3::UnitZ),
 	m_Pitch(0.0f)
@@ -45,6 +47,9 @@ void Player::Init()
 	staticmesh.Load(tmpStr1, texDirectory);
 
 	m_MeshRenderer.Init(staticmesh);
+
+	//当たり判定用のサイズを設定
+	collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
 
 	// シェーダオブジェクト生成
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
@@ -156,7 +161,6 @@ void Player::Update()
 	return;
 #endif
 
-	// -------- Collision detection added ---------
 	// 各軸ごとに仮位置を試し、ブロックと衝突する場合はその軸の移動を取り消す
 	auto weakBlocks = Game::GetInstance().FindAllObjects<Block>();
 
@@ -166,7 +170,7 @@ void Player::Update()
 		testCol.center = testPos;
 
 		for (auto& wb : weakBlocks) {
-			if (auto b = wb.lock()) 
+			if (auto b = wb.lock())
 			{
 				if (testCol.CheckCollision(b->GetCollider())) {
 					return true; // 1つでも当たれば衝突
@@ -174,7 +178,7 @@ void Player::Update()
 			}
 		}
 		return false;
-		};
+	};
 
 	// 軸ごとに仮移動 → 衝突した軸の移動だけ潰す
 	DirectX::SimpleMath::Vector3 desired = m_Position;
@@ -191,6 +195,23 @@ void Player::Update()
 	// 反映
 	m_Position = desired;
 	collider.center = m_Position;
+
+	//ゴール判定
+	auto weakPole = Game::GetInstance().FindAllObjects<Pole>();
+
+	for (auto& wp : weakPole) {
+		if (auto p = wp.lock())
+		{
+			if (collider.CheckCollision(p->GetCollider())) {
+				// ゴールしたらリザルトへ
+				SceneManager::GetInstance().ChangeScene<ResultScene>();
+			}
+		}
+	}
+
+
+
+
 }
 
 

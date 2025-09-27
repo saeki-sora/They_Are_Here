@@ -44,6 +44,7 @@ void Pole::Init()
 
 	//当たり判定用のサイズを設定
 	collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
+	collider.size.x *= 0.25;
 
 	// シェーダオブジェクト生成
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
@@ -77,7 +78,7 @@ void Pole::Init()
 //=======================================
 void Pole::Update()
 {
-
+	collider.center = m_Position;
 }
 
 //=======================================

@@ -1,21 +1,19 @@
 #pragma once
-#include "Scene.h"
+#include "SceneBase.h"
 #include "Object.h"
 
 // ResultSceneクラス
-class ResultScene : public Scene
+class ResultScene : public SceneBase
 {
 private:
-	std::vector<std::weak_ptr<Object>> m_MySceneObjects; // このシーンのオブジェクト
-
-	void Init(); // 初期化
-	void Uninit(); // 終了処理
 
 public:
-	ResultScene(); // コンストラクタ
-	~ResultScene(); // デストラクタ
+	ResultScene() = default; // コンストラクタ
+	~ResultScene() = default; // デストラクタ
 
-	void Update(); // 更新
+	void OnInit() override;
+	void OnUpdate(float deltaTime) override;
+	void OnUnload() override;
 
 	void SetScore(int c);
 };

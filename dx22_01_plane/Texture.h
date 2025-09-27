@@ -24,5 +24,5 @@ public:
 
 	void SetGPU();
 
-
+	void CreateFromSRV(ComPtr<ID3D11ShaderResourceView> srv);
 };

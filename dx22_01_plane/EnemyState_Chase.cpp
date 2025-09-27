@@ -7,19 +7,23 @@ using namespace DirectX::SimpleMath;
 
 void EnemyChaseState::Enter(Enemy* enemy)
 {
-    m_RepathTimer = 0.0f;
+    m_PathUpdateTimer = 0.0f;
+    m_PathUpdateInterval= 0.5f; //0.5秒ごとにパスを再計算する
     enemy->ComputePathTo(enemy->GetLastPlayerPos());
 }
 
 void EnemyChaseState::Update(Enemy* enemy, float deltaTime)
 {
-    bool seesPlayer = enemy->CanSeePlayer();
-    if (seesPlayer)
+    bool seePlayer = enemy->CanSeePlayer();
+
+    if (seePlayer)
     {
-        m_RepathTimer += deltaTime;
-        if (m_RepathTimer > 0.5f) // マジックナンバーの改善案も適用すると尚良い
+        m_PathUpdateTimer += deltaTime;
+
+        //0.5秒ごとにパスを再計算する
+        if (m_PathUpdateTimer > m_PathUpdateInterval)
         {
-            m_RepathTimer = 0.0f;
+            m_PathUpdateTimer = 0.0f;
             enemy->ComputePathTo(enemy->GetLastPlayerPos());
         }
     }
@@ -32,5 +36,5 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime)
 
 void EnemyChaseState::Exit(Enemy* enemy)
 {
-    // 何もなし
+
 }

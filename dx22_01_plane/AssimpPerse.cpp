@@ -4,6 +4,7 @@
 #include	<cassert>
 #include	"Texture.h"
 #include	"AssimpPerse.h"
+#include "TextureManager.h"
 #include<algorithm>
 #include <cfloat>
 
@@ -15,13 +16,13 @@ namespace AssimpPerse
 	std::vector<std::vector<unsigned int>> g_indices{};	// インデックスデータ（メッシュ単位）
 	std::vector<SUBSET> g_subsets{};					// サブセット情報
 	std::vector<MATERIAL> g_materials{};				// マテリアル
-	std::vector<std::unique_ptr<Texture>> g_textures;	// ディフューズテクスチャ群
+	std::vector<std::shared_ptr<Texture>> g_textures;	// ディフューズテクスチャ群
 
 	DirectX::SimpleMath::Vector3 g_sceneMin(FLT_MAX, FLT_MAX, FLT_MAX);
 	DirectX::SimpleMath::Vector3 g_sceneMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
 	// ディフューズTxtureコンテナを返す
-	std::vector<std::unique_ptr<Texture>> GetTextures()
+	std::vector<std::shared_ptr<Texture>> GetTextures()
 	{
 		return std::move(g_textures);
 	}
@@ -60,7 +61,8 @@ namespace AssimpPerse
 
 			// テクスチャ処理
 			std::string texturename;
-			std::unique_ptr<Texture> texture = nullptr;
+			// ローカル変数の型を shared_ptr に変更
+			std::shared_ptr<Texture> texture = nullptr;
 
 			unsigned int textureCount = material->GetTextureCount(aiTextureType_DIFFUSE);
 			if (textureCount > 0)
@@ -68,59 +70,59 @@ namespace AssimpPerse
 				aiString path{};
 				if (AI_SUCCESS == material->Get(AI_MATKEY_TEXTURE(aiTextureType_DIFFUSE, 0), path))
 				{
-					std::string texpath = path.C_Str();
-					std::cout << texpath << std::endl;
+					std::string texpath(path.C_Str(), path.length);
 
-					// パス正規化（一回だけ処理）
-					if (texpath.find(':') != std::string::npos)
-					{
-						size_t pos = texpath.find_last_of("/\\");
-						if (pos != std::string::npos)
-						{
-							texpath = texpath.substr(pos + 1);
-						}
-					}
-					texturename = texpath;
+					 // ---- ここから “安全化” ----
+						 // 1) バックスラッシュ→スラッシュ
+						for (auto& c : texpath) if (c == '\\') c = '/';
+					
+						 // 2) 制御文字・タブ・改行などを削除
+						texpath.erase(std::remove_if(texpath.begin(), texpath.end(),
+							[](unsigned char ch) { return ch < 0x20 || ch == 0x7F; }), texpath.end());
+					
+						 // 3) ディレクトリ付きなら **ファイル名だけ** 抜き出す
+						 //    例: "Block/.003  sirokabe.jpg" → "sirokabe.jpg"
+						std::filesystem::path p(texpath);
+					std::string cleanName = p.filename().string();
+					
+						 // 4) 念のため前後の空白をトリム
+						auto ltrim = [](std::string& s) { s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char c) {return c > 0x20; })); };
+					auto rtrim = [](std::string& s) { s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char c) {return c > 0x20; }).base(), s.end()); };
+					ltrim(cleanName); rtrim(cleanName);
+					
+						texturename = cleanName;   // ★ 保存するのは “安全化後の素のファイル名”
+					 // ---- 安全化ここまで ----
 
 					// テクスチャ読み込み
 					if (auto tex = pScene->GetEmbeddedTexture(path.C_Str()))
 					{
 						// 内蔵テクスチャ
-						texture = std::make_unique<Texture>();
+						texture = std::make_shared<Texture>();
 						if (texture->LoadFromFemory((unsigned char*)tex->pcData, tex->mWidth))
 						{
 							std::cout << "Embedded" << std::endl;
 						}
 						else
 						{
-							texture.reset();
+							texture.reset(); // shared_ptr のリセット
 						}
 					}
 					else
 					{
-						// 外部テクスチャファイル
-						texture = std::make_unique<Texture>();
+						// 外部テクスチャファイルは TextureManager に任せる！
 						std::string texname = texturedirectory + "/" + texpath;
-
-						if (texture->Load(texname))
+						texture = TextureManager::GetInstance().Load(texname); // この1行でOK!
+						if (texture)
 						{
-							std::cout << "External texture loaded" << std::endl;
-						}
-						else
-						{
-							texture.reset();
+							std::cout << "External texture loaded via Manager" << std::endl;
 						}
 					}
 				}
 			}
 
-			// テクスチャが読み込めなかった場合のダミーテクスチャ
-			if (!texture)
-			{
-				texture = std::make_unique<Texture>();
-			}
-
-			g_textures.push_back(std::move(texture));
+			// テクスチャが読み込めていれば g_textures に追加
+			// texture が nullptr でもそのまま追加される (テクスチャなしマテリアル)
+			g_textures.push_back(texture);
 
 			// マテリアル情報を直接構築してpush_back
 			g_materials.emplace_back(MATERIAL{

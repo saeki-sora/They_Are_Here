@@ -40,7 +40,7 @@ namespace AssimpPerse
 	const std::vector<std::vector<VERTEX>>& GetVertices();
 	const std::vector<std::vector<unsigned int>>& GetIndices();
 	const std::vector<MATERIAL>& GetMaterials();
-	std::vector<std::unique_ptr<Texture>> GetTextures();
+	std::vector<std::shared_ptr<Texture>> GetTextures();
 	DirectX::SimpleMath::Vector3 GetSceneMin();
 	DirectX::SimpleMath::Vector3 GetSceneMax();
 }

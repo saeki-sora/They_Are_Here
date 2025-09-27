@@ -241,9 +241,14 @@ void Application::MainLoop()
 			// 1/60秒が経過したか？
 			if (nowCount >= oldCount + frequency / 60) {
 
+				// 経過秒数を計算
+				double dt = static_cast<double>(nowCount - oldCount) / static_cast<double>(frequency);
+
+				// 異常なスパイクを抑える
+				if (dt > 0.1) dt = 0.1;//100ms上限
 
 				// ゲーム処理実行
-				game.Update();
+				game.Update(static_cast<float>(dt));
 
 				game.Draw();
 

@@ -40,7 +40,8 @@ std::shared_ptr<ShaderData> ShaderManager::GetShader(const std::string& vsPath, 
 //-----------------------------------------------------------------------------
 // シェーダーを実際に作成する
 //-----------------------------------------------------------------------------
-std::shared_ptr<ShaderData> ShaderManager::CreateShader(const std::string& vsPath, const std::string& psPath) {
+std::shared_ptr<ShaderData> ShaderManager::CreateShader(const std::string& vsPath, const std::string& psPath)
+{
     auto shaderData = std::make_shared<ShaderData>();
 
     // 頂点データの定義
