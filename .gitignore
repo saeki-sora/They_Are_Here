@@ -41,3 +41,8 @@ Release/
 
 # Shader compiled outputs
 *.cso
+
+# Binary files
+*.bin
+*.dat
+
