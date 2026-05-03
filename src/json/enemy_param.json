@@ -1,20 +1,19 @@
 {
-	"Common": {
-		"SearchSpeed": 45.0, //巡回速度
-		"ChaseSpeed": 70.0, //追跡速度
-		"MaxAccel": 60.0, //最大加速度
-		"MaxAngVelDeg": 320.0 //最大回転速度
-	},
-	"Detection": {
-		"Radius": 800.0, //探索半径
-		"FOV": 90.0, //視野角
-		"CatchRange": 30.0, //捕捉範囲
-		"LostDuration": 5.0 //発見後の消失時間
-	},
-	"AI": {
-		"ChasePathUpdateInterval": 0.25, //追跡パス更新間隔
-		"PredictionTime": 0.8, //予測時間
-		"CornerCutDist": 25.0 //コーナーカット距離
-	}
+  "AI": {
+    "ChasePathUpdateInterval": 0.25,
+    "CornerCutDist": 15.0,
+    "PredictionTime": 0.8
+  },
+  "Common": {
+    "ChaseSpeed": 50.0,
+    "MaxAccel": 60.0,
+    "MaxAngVelDeg": 320.0,
+    "SearchSpeed": 45.0
+  },
+  "Detection": {
+    "CatchRange": 30.0,
+    "FOV": 90.0,
+    "LostDuration": 5.0,
+    "Radius": 800.0
+  }
 }
-

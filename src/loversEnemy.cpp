@@ -95,18 +95,16 @@ bool loversEnemy::ComputePathTo(const DirectX::SimpleMath::Vector3& target)
     const auto& partnerPath = partner->GetWaypoints();
 
     // コストマップを作成
-    // このマップは、特定のグリッドセルに対する移動コストの倍率を保持します。
-    // キー: グリッドセルのインデックス (x * MaxY + y)
-    // 値: コスト倍率（通常は1.0、避けたいセルは20.0など）
     std::unordered_map<int, float> costMap;
-    const int maxY = MAP::Config::MaxY;
+
+    // マップサイズはランタイムで難易度によって変わるため、MakeMap から取得する
+    const int maxY = m_Map->GetSizeY();
 
     // 相方が通過する予定のすべてのセルをコストマップに登録
-    // コストを20.0倍に設定することで、A*アルゴリズムがこのセルを極力避けるようになります。
     for (const auto& pos : partnerPath)
     {
         GridCoord cell = Pathfinder::WorldToGrid(m_Map, pos);
-        costMap[cell.x * maxY + cell.y] = 20.0f;
+		costMap[cell.x * maxY + cell.y] = 20.0f;//コストを高く設定して相方のルートを避けるようにする
     }
 
     // 相方の現在位置も避けるべきセルとして登録
@@ -114,7 +112,6 @@ bool loversEnemy::ComputePathTo(const DirectX::SimpleMath::Vector3& target)
     costMap[partnerPos.x * maxY + partnerPos.y] = 20.0f;
 
     // 重み付きA*アルゴリズムでパスを計算
-    // コストマップを考慮することで、相方のルートと重ならない経路が自動的に選択されます。
     GridCoord start = Pathfinder::WorldToGrid(m_Map, m_Position);
     GridCoord goal = Pathfinder::WorldToGrid(m_Map, target);
 
@@ -135,10 +132,7 @@ bool loversEnemy::ComputePathTo(const DirectX::SimpleMath::Vector3& target)
         worldPath.push_back(Pathfinder::GridToWorld(m_Map, cell));
     }
 
-    // 親クラスの共通後処理関数を呼び出し
-    // この関数内で、スムージング、始点スキップ、コーナーカットが実行されます。
-    // 注意: 元のコードでは簡易的なスムージング（HasLineOfSightのみ）を使用していましたが、
-    // ProcessPath関数ではウィスカー判定を使った高品質なスムージングが行われます。
+    // 親クラスの共通処理関数を呼び出し
     ProcessPath(worldPath);
 
     // パス計算成功

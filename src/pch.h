@@ -11,6 +11,7 @@
 #include <cmath>
 #include <d3d11.h>
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
 #include <io.h>
 #include <string>
 #include <functional>
@@ -53,5 +54,9 @@
 
 #undef min
 #undef max
+
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
 
 

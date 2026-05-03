@@ -19,11 +19,10 @@ bool SimpleBoxCollider::m_initialized = false;
 
 bool SimpleBoxCollider::CheckCollision(const SimpleBoxCollider& other) const
 {
-
-	// AABB方式の当たり判定
-	return (abs(center.x - other.center.x) <= (size.x + other.size.x) * 0.5f) &&
-		(abs(center.y - other.center.y) <= (size.y + other.size.y) * 0.5f) &&
-		(abs(center.z - other.center.z) <= (size.z + other.size.z) * 0.5f);
+	// OBB同士の衝突判定を行うため、OBBに変換してからIntersect関数を呼び出す
+	DirectX::BoundingOrientedBox obb1 = ToBoundingOrientedBox();
+	DirectX::BoundingOrientedBox obb2 = other.ToBoundingOrientedBox();
+	return obb1.Intersects(obb2);
 }
 
 
@@ -46,14 +45,14 @@ void SimpleBoxCollider::InitDebugDraw(ID3D11Device* device, ID3D11DeviceContext*
 
 	ComPtr<ID3D11InputLayout> il;
 	HRESULT hr = device->CreateInputLayout(
-		VertexPositionColor::InputElements,      // 公式のレイアウト定義
-		VertexPositionColor::InputElementCount,  // 公式の要素数
+		VertexPositionColor::InputElements,
+		VertexPositionColor::InputElementCount,
 		bytecode,
 		length,
 		il.GetAddressOf()
 	);
 	if (SUCCEEDED(hr)) {
-		m_InputLayout = il;  //保存
+		m_InputLayout = il;
 
 		std::cout << "SimpleBoxColliderの初期化:成功" << std::endl;
 	}
@@ -67,8 +66,11 @@ void SimpleBoxCollider::InitDebugDraw(ID3D11Device* device, ID3D11DeviceContext*
 
 
 // デバッグ用のコライダービジュアルを描画する関数
-void SimpleBoxCollider::DrawDebugCollider(const Camera& cam, const Matrix& world) const
+void SimpleBoxCollider::DrawDebugCollider(const Camera& cam) const
 {
+	// コライダー自身が中心座標と回転を持っているため、ワールド行列を自己計算する
+	Matrix world = Matrix::CreateFromQuaternion(rotation) * Matrix::CreateTranslation(center);
+
 	// 初期化チェック
 	if (!m_Batch || !m_Effect || !m_States) {
 		return;
@@ -208,8 +210,6 @@ void SimpleBoxCollider::DrawDebugCollider(const Camera& cam, const Matrix& world
 	if (prevPS) prevPS->Release();
 	for (UINT i = 0; i < numPSClassInstances; ++i) { if (prevPSClassInstances[i]) prevPSClassInstances[i]->Release(); }
 
-	// Rendererが持つシェーダーのキャッシュもリセットしておく
-	//Renderer::ResetStateCache();
 }
 
 

@@ -37,6 +37,8 @@ public:
 	void SetRotation(const DirectX::SimpleMath::Vector3& rot) override
 	{
 		Object::SetRotation(rot);
+		// OBB対応: 親オブジェクトの回転に合わせてコライダーの回転(Quaternion)も更新する
+		collider.rotation = DirectX::SimpleMath::Quaternion::CreateFromYawPitchRoll(rot.y, rot.x, rot.z);
 	}
 
 	void Draw() override;

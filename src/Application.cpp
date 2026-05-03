@@ -3,15 +3,10 @@
 #include "Renderer.h"
 #include"Game.h"
 
-
-//#include "imgui/imgui_impl_win32.h"
 #define WIN32_LEAN_AND_MEAN
 
-//extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-//#include "../imgui-master/imgui-master/backends/imgui_impl_win32.cpp"
-
-const auto ClassName = TEXT("2024 framework ひな型");     //!< ウィンドウクラス名.
-const auto WindowName = TEXT("2024 framework ひな型(フィールド描画)");    //!< ウィンドウ名.
+const auto ClassName = TEXT("TheyAreHere");     //ウィンドウクラス名.
+const auto WindowName = TEXT("TheyAreHere");    //ウィンドウ名.
 
 HINSTANCE  Application::m_hInst;        // インスタンスハンドル
 HWND       Application::m_hWnd;         // ウィンドウハンドル
@@ -145,7 +140,6 @@ bool Application::InitWnd()
 	// ウィンドウを生成.
 	m_hWnd = CreateWindowEx(
 		0,
-		//        WS_EX_TOPMOST,
 		ClassName,
 		WindowName,
 		style,
@@ -205,14 +199,14 @@ void Application::MainLoop()
 	// FPS計測用変数
 	int fpsCounter = 0;
 	auto lastFpsUpdateTime = std::chrono::high_resolution_clock::now();
-	//long long oldTick = GetTickCount64(); // 前回計測時の時間
-	//long long nowTick = oldTick; // 今回計測時の時間
+
 
 	// FPS固定用変数
 	LARGE_INTEGER liWork; // workがつく変数は作業用変数
 	long long frequency;// どれくらい細かく時間をカウントできるか
 	QueryPerformanceFrequency(&liWork);
 	frequency = liWork.QuadPart;
+
 	// 時間（単位：カウント）取得
 	QueryPerformanceCounter(&liWork);
 	long long oldCount = liWork.QuadPart;// 前回計測時の時間
@@ -260,6 +254,7 @@ void Application::MainLoop()
 
 		// 現在時刻を取得
 		auto currentTime = std::chrono::high_resolution_clock::now();
+
 		// 前回FPSを更新してからの経過時間（秒）
 		std::chrono::duration<double> elapsed = currentTime - lastFpsUpdateTime;
 
@@ -286,20 +281,17 @@ void Application::MainLoop()
 }
 
 
-//if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam)) return true;
-
-  //ImGuiのメッセージ処理
-//IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-//if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam))
-//    return true;
 
 //-----------------------------------------------------------------------------
 // ウィンドウプロシージャ
 //-----------------------------------------------------------------------------
 LRESULT CALLBACK Application::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	//if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam))
- //       return true;
+	{
+		extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+		if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam))
+			return true;
+	}
 	switch (uMsg)
 	{
 	case WM_DESTROY:// ウィンドウ破棄のメッセージ
@@ -321,8 +313,6 @@ LRESULT CALLBACK Application::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 	case WM_KEYDOWN: //キー入力があったメッセージ
 	{
-		// ESCキーの処理はCamera側で行うため、ここでは処理しない
-		// 他のキーの処理が必要な場合はここに追加
 
 	}
 	break;

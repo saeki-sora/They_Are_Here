@@ -1,9 +1,8 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Player.h"
 #include "StaticMesh.h"
 #include "utility.h"
 #include "Game.h"
-#include "Collision.h"
 #include"Block.h"
 #include"Pole.h"
 #include"SceneManager.h"
@@ -16,6 +15,7 @@
 #include "InvisibleItem.h"
 #include "DebugManager.h"
 #include "DashEffect.h"
+#include "MiniMap.h"
 
 
 using namespace std;
@@ -41,22 +41,22 @@ Player::Player(const Vector3& pos, const Vector3& size)
 #endif
 }
 
-// チE��トラクタ
+
 Player::~Player() {}
 
 
 //=======================================
-// 初期化�E琁E
+// 初期化
 //=======================================
 void Player::Init()
 {
-	// メチE��ュ読み込み
+	// スタティックメッシュオブジェクトの生成
 	StaticMesh staticmesh;
 
-	// 3DモチE��チE�Eタ
+	// モデルファイル
 	std::u8string modelFile = u8"assets/model/player/Player.fbx";
 
-	// チE��スチャチE��レクトリ
+	// テクスチャディレクトリ
 	std::string texDirectory = "assets/texture/terain.png";
 
 	// Meshを読み込む
@@ -65,91 +65,94 @@ void Player::Init()
 
 	m_MeshRenderer.Init(staticmesh);
 
-	//当たり判定用のサイズを設宁E
+	//当たり判定用のサイズを設定
 	collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
 
-	// シェーダオブジェクト生戁E
+	// シェーダオブジェクト生成
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
 
-	// サブセチE��惁E��取征E
+	// サブセット情報取得
 	m_subsets = staticmesh.GetSubsets();
 
-	// チE��スチャ惁E��取征E
+	// テクスチャ情報取得
 	m_Textures = staticmesh.GetTextures();
 
-	// マテリアル惁E��取征E
+	// マテリアル情報取得
 	vector<MATERIAL> materials = staticmesh.GetMaterials();
 
-	// マテリアル数刁E��ーチE
+	// マテリアル数取得
 	for (int i = 0; i < materials.size(); ++i)
 	{
-		// マテリアルオブジェクト生戁E
+		// マテリアルオブジェクト生成
 		std::unique_ptr<Material> m = std::make_unique<Material>();
 
-		// マテリアル惁E��をセチE��
+		// マテリアル情報を設定
 		m->Create(materials[i]);
 
-		// マテリアルオブジェクトを配�Eに追加
+		// マテリアルオブジェクトを配列に追加
 		m_Materiales.push_back(std::move(m));
 	}
 }
 
 
 //========================================
-//当たり判定チェチE��関数
+//当たり判定チェック
 //========================================
 bool Player::CheckCollisionWithBlocks(const Vector3& newPosition)
 {
 
 	if (DebugManager::GetInstance().IsNoClipMode())
 	{
-		return false;// ノ�EクリチE�Eモードなら衝突しなぁE
+		return false;// ノークリッピングモードなら衝突しない
 	}
 
-	// 新しい位置でのコライダーを作�E
-	SimpleBoxCollider testCollider(newPosition, collider.size);
+	// 新しい位置でのコライダーを作成
+	SimpleBoxCollider testCollider = collider;
+	testCollider.center = newPosition;
 
-	// ゲーム冁E�EすべてのBlockオブジェクトをチェチE��
+	// ゲームシーン内のすべてのBlockオブジェクトをチェック
 	auto blocks = SceneManager::GetInstance().FindAllObjects<Block>();
 	for (auto& weakBlock : blocks)
 	{
-		// weak_ptrをshared_ptrに変換してチェチE��
+		// weak_ptrをshared_ptrに変換してチェック
 		if (auto block = weakBlock.lock())
 		{
-			// 当たり判定をチェチE��
+			// 当たり判定をチェック
 			if (testCollider.CheckCollision(block->GetCollider()))
 			{
-				return true; // 衝突してぁE��
+				return true; // 衝突している
 			}
 		}
 	}
-	return false; // 衝突してぁE��ぁE
+	return false; // 衝突していない
 }
 
 
 
 
 //=======================================
-// 更新処琁E
+// 更新処理
 //=======================================
 void Player::Update(float deltaTime)
 {
-	collider.center = m_Position; // コライダーの中忁E��置を更新
 
-	// Fキーで透�E化発勁E
+	collider.rotation = DirectX::SimpleMath::Quaternion::Identity;
+	collider.center = m_Position; // コライダーの中心位置を更新
+
+	// Fキーで透明化発動
 	if (Input::GetKeyTrigger('F'))
 	{
 		if (!m_IsInvisible && m_InvisibleStock > 0)
 		{
-			m_InvisibleStock--; // 減らすだけ。表示は関知しなぁE��E
+			m_InvisibleStock--; // 減らすだけ。表示は関知しない
 			StartInvisible(10.0f);
 
-			EffectManager::GetInstance().StartEffect<InvisibleEffect>(m_InvisibleTime);//透�E化エフェクト開姁E
+			EffectManager::GetInstance().StartEffect<InvisibleEffect>(m_InvisibleTime);//透明化エフェクト開始
 		}
 	}
 
 
-	//透�E化タイマ�E処琁E
+	//透明化タイマー処理
 	if (m_IsInvisible)
 	{
 		m_InvisibleTimer -= deltaTime;
@@ -162,18 +165,18 @@ void Player::Update(float deltaTime)
 		}
 	}
 
-	// 移動可能フラグが立ってぁE��ぁE��合�E処琁E��スキチE�E
+	// 移動可能フラグが立っている場合のみ処理を行う
 	if (!m_CanMove) return;
 
 
-	// 壁破壊チャージ処琁E
+	// 壁破壊チャージ処理
 	bool currentButtonState = Input::GetKeyPress(VK_LBUTTON);
 
 	if (currentButtonState)
 	{
 		if (m_WallBreakJustCompleted)
 		{
-			// 壁破壊直後�E押しっぱなしでは再チャージしなぁE
+			// 壁破壊直後は押しっぱなしでは再チャージしない
 		}
 		else if (!m_IsChargingBreak)
 		{
@@ -189,7 +192,7 @@ void Player::Update(float deltaTime)
 		}
 		else
 		{
-			// チャージ継綁E
+			// チャージ継続中
 			m_BreakChargeTimer += deltaTime;
 
 			if (m_BreakChargeTimer >= WALL_BREAK_CHARGE_TIME)
@@ -214,13 +217,13 @@ void Player::Update(float deltaTime)
 		m_WallBreakJustCompleted = false;
 	}
 
-	// マウスキャプチャ状態�E時�Eみマウス操作を処琁E
+	// マウスキャプチャ状態時のみマウス操作を処理
 	if (m_MouseCaptured)
 	{
 		int mouseX, mouseY;
 		Input::GetMouseMove(&mouseX, &mouseY);
 
-		if (m_IsChargingBreak) // 破壊チャージ中は視点回転を制陁E
+		if (m_IsChargingBreak) // 破壊チャージ中は視点回転を制限
 		{
 			float desiredYaw = m_Rotation.y + mouseX * m_MouseSensitivity;
 			float yawOffset = desiredYaw - m_ChargeStartYaw;
@@ -239,7 +242,7 @@ void Player::Update(float deltaTime)
 			const float maxPitch = DirectX::XM_PIDIV2 - 0.1f;
 			m_Pitch = std::clamp(m_Pitch, -maxPitch, maxPitch);
 		}
-		else // 通常時�E自由な視点回転
+		else // 通常時は自由な視点回転
 		{
 			m_Rotation.y += mouseX * m_MouseSensitivity;
 			m_Pitch -= mouseY * m_MouseSensitivity;
@@ -249,12 +252,12 @@ void Player::Update(float deltaTime)
 		}
 	}
 
-	// プレイヤーの前方向�Eクトルを計算！E軸回転のみ使用、移動用�E�E
+	// プレイヤーの前方向ベクトルを計算！Y軸回転のみ使用、移動用
 	Matrix rotM = Matrix::CreateRotationY(m_Rotation.y);
 	m_Forward = Vector3::Transform(Vector3::UnitZ, rotM);
 	m_Forward.Normalize();
 
-	// 地面移動に限宁E
+	// 地面移動に限る
 	Vector3 forwardFlat = m_Forward;
 	forwardFlat.y = 0.0f;
 	if (forwardFlat.LengthSquared() < 1e-6f) forwardFlat = Vector3::UnitZ;
@@ -263,16 +266,41 @@ void Player::Update(float deltaTime)
 	const Vector3 up(0.0f, 1.0f, 0.0f);
 	const Vector3 right = up.Cross(forwardFlat);
 
-	// ダチE��ュ判宁E
+	// ダッシュ判定
 	bool wantsMove = Input::GetKeyPress('W') || Input::GetKeyPress('S') ||
 	                 Input::GetKeyPress('A') || Input::GetKeyPress('D');
 	bool wantsDash = Input::GetKeyPress(VK_SHIFT) && wantsMove && !m_IsChargingBreak;
+	bool shiftHeld = Input::GetKeyPress(VK_SHIFT);
 
-	if (wantsDash && m_Stamina > STAMINA_DASH_THRESHOLD)
+	// Shift を離したらダッシュロックを解除
+	if (!shiftHeld)
+	{
+		m_DashLocked = false;
+	}
+
+	// 枯渇ペナルティのタイマー処理
+	if (m_IsExhausted)
+	{
+		m_ExhaustedTimer -= deltaTime;
+		if (m_ExhaustedTimer <= 0.0f)
+		{
+			m_IsExhausted    = false;
+			m_ExhaustedTimer = 0.0f;
+		}
+	}
+
+	if (wantsDash && !m_IsExhausted && !m_DashLocked && m_Stamina > 0.0f)
 	{
 		m_IsDashing = true;
 		m_Stamina -= STAMINA_DRAIN_RATE * deltaTime;
-		if (m_Stamina < 0.0f) m_Stamina = 0.0f;
+		if (m_Stamina <= 0.0f)
+		{
+			m_Stamina        = 0.0f;
+			m_IsExhausted    = true;
+			m_ExhaustedTimer = EXHAUSTED_COOLDOWN;
+			m_DashLocked     = true;
+			m_IsDashing      = false;
+		}
 	}
 	else
 	{
@@ -293,7 +321,7 @@ void Player::Update(float deltaTime)
 		m_DashEffect->SetActive(m_IsDashing);
 	}
 
-	// キーボ�Eド�E力による移勁Eチャージ中は移動不可)
+	// キーボード入力による移動チャージ中は移動不可
 	Vector3 movement = Vector3::Zero;
 	if (!m_IsChargingBreak)
 	{
@@ -303,7 +331,7 @@ void Player::Update(float deltaTime)
 		if (Input::GetKeyPress('D')) movement += right * currentSpeed;
 	}
 
-	// チE��チE��モード�E飛行操佁E
+	// チートモード時の飛行操作
 	if (DebugManager::GetInstance().IsNoClipMode())
 	{
 		if (!m_IsChargingBreak)
@@ -313,20 +341,24 @@ void Player::Update(float deltaTime)
 		}
 	}
 
-	// チE��チE��モード�E当たり判定スキチE�E
+	// チートモード時の当たり判定スキップ
 	if (DebugManager::GetInstance().IsNoClipMode())
 	{
-		// 飛行モード時は当たり判定なしで移勁E
+		// 飛行モード時は当たり判定なしで移動
 		m_Position += movement;
 		collider.center = m_Position;
 	}
 	else
 	{
-		// リリースモードでは当たり判定付き移動�E琁E
+		// リリースモードでは当たり判定付き移動
 		auto weakBlocks = SceneManager::GetInstance().FindAllObjects<Block>();
 
 		auto collidesAt = [&](const DirectX::SimpleMath::Vector3& testPos) -> bool {
+			// 壁境界上での偽陽性（接触=衝突扱い）を防ぐため XZ にスキン幅を引く
+			static constexpr float SKIN = 0.02f;
 			SimpleBoxCollider testCol = collider;
+			testCol.size.x = collider.size.x - SKIN * 2.0f;
+			testCol.size.z = collider.size.z - SKIN * 2.0f;
 			testCol.center = testPos;
 
 			for (auto& wb : weakBlocks)
@@ -364,41 +396,47 @@ void Player::Update(float deltaTime)
 
 	if (IsGoal) return;
 
-	// スタミナ自然回復�E�ダチE��ュしてぁE��ぁE���E�E
+	// スタミナ自然回復
 	if (!m_IsDashing && m_Stamina < m_MaxStamina && m_Map)
 	{
-		// プレイヤーのワールド座標からグリチE��座標を送E��E
+		// プレイヤーのワールド座標からグリッド座標を算出
 		const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
-		const float MAP_CX = MAP::Config::MaxX / 2.0f * MAP::Config::BLOCK_SIZE;
-		const float MAP_CY = MAP::Config::MaxY / 2.0f * MAP::Config::BLOCK_SIZE;
+
+		// マップサイズはランタイムで難易度によって変わるため、MakeMap から取得する
+		const float MAP_CX = m_Map->GetSizeX() / 2.0f * MAP::Config::BLOCK_SIZE;
+		const float MAP_CY = m_Map->GetSizeY() / 2.0f * MAP::Config::BLOCK_SIZE;
 
 		int gx = static_cast<int>(std::round((HALF_BLOCK + MAP_CX - m_Position.x) / MAP::Config::BLOCK_SIZE));
 		int gy = static_cast<int>(std::round((HALF_BLOCK - MAP_CY + (-m_Position.z)) / MAP::Config::BLOCK_SIZE));
 
-		// ゴールからの距離を計箁E
+		// ゴールからの距離を計算
 		int sx, sy, goalX, goalY;
 		m_Map->GetStartGoal(sx, sy, goalX, goalY);
 		int distGoal = std::abs(goalX - gx) + std::abs(goalY - gy);
 
 		float regenRate;
-		if (distGoal <= MAP::Config::GoalNearRadius)
-			regenRate = STAMINA_REGEN_NEAR;   // 赤ゾーン�E�遅ぁE��E
-		else if (distGoal <= MAP::Config::GoalMidRadius)
-			regenRate = STAMINA_REGEN_MID;    // 青ゾーン�E�中間！E
+		if (distGoal <= m_Map->GetGoalNearRadius())   // 赤ゾーン（ゴール近接）
+			regenRate = STAMINA_REGEN_NEAR;
+		else if (distGoal <= m_Map->GetGoalMidRadius()) // 青ゾーン（中距離）
+			regenRate = STAMINA_REGEN_MID;    // 青ゾーン中間
 		else
-			regenRate = STAMINA_REGEN_FAR;    // 緑ゾーン�E�速い�E�E
+			regenRate = STAMINA_REGEN_FAR;    // 緑ゾーン遠距離
 
-		m_Stamina = std::min(m_Stamina + regenRate * deltaTime, m_MaxStamina);
+		// 枯渇ペナルティ中は回復しない
+		if (!m_IsExhausted)
+		{
+			m_Stamina = std::min(m_Stamina + regenRate * deltaTime, m_MaxStamina);
+		}
 	}
 
-	// ゴール判定（デバッグモード�Eリリースモード�E通！E
+	// ゴール判定（デバッグモード・リリースモード・通用）
 	auto weakPole = SceneManager::GetInstance().FindObject<Pole>();
 
 	if (auto p = weakPole.lock())
 	{
 		if (collider.CheckCollision(p->GetCollider()))
 		{
-			//カギを持ってぁE��かチェチE��
+			
 			if (m_HasKey)
 			{
 				IsGoal = true;
@@ -407,8 +445,8 @@ void Player::Update(float deltaTime)
 			}
 			else
 			{
-				//カギを持ってぁE��ぁE��合�E処琁E
-				// ここで「カギが忁E��です！」とぁE��画像を表示するフラグを立てる等�E処琁E��行う
+				//カギを持っていない場合の処理
+				// ここで「カギが必要です！」といった画像を表示するフラグを立てる等の処理を行う
 				std::cout << "You need the Key to goal!" << std::endl;
 
 			}
@@ -418,7 +456,7 @@ void Player::Update(float deltaTime)
 
 
 //=======================================
-// 透�E化開始�E琁E
+// 透明化開始処理
 //=======================================
 void Player::StartInvisible(float duration)
 {
@@ -429,13 +467,13 @@ void Player::StartInvisible(float duration)
 
 
 //=======================================
-// 透�E化ストック追加処琁E
+// 透明化ストック追加処理
 //=======================================
 void Player::AddInvisibleStock(int amount)
 {
 	m_InvisibleStock += amount;
 
-	// 最大値を趁E��なぁE��ぁE��キャチE�Eする
+	// 最大値を超えないようにキャップする
 	if (m_InvisibleStock > m_MaxInvisibleStock)
 	{
 		m_InvisibleStock = m_MaxInvisibleStock;
@@ -445,29 +483,29 @@ void Player::AddInvisibleStock(int amount)
 
 
 //=======================================
-// 描画処琁E
+// 描画処理
 //=======================================
 void Player::Draw()
 {
 
-	//// SRT惁E��作�E
+	//// SRT行列作成
 	//Matrix r = Matrix::CreateRotationY(m_Rotation.y + DirectX::XM_PI); // Y軸回転のみ
 	//Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
 	//Matrix s = Matrix::CreateScale(m_Scale.x, m_Scale.y, m_Scale.z);
 
 	//Matrix worldmtx;
 	//worldmtx = s * r * t;
-	//Renderer::SetWorldMatrix(&worldmtx); // GPUにセチE��
+	//Renderer::SetWorldMatrix(&worldmtx); // GPUにセット
 
 	//m_Shader.SetGPU();
 
-	//// インチE��クスバッファ・頂点バッファをセチE��
+	//// インデックスバッファ・頂点バッファをセット
 	//m_MeshRenderer.BeforeDraw();
 
-	////マテリアル数刁E��ーチE
+	////マテリアル数分ループ
 	//for (int i = 0; i < m_subsets.size(); i++)
 	//{
-	//	// マテリアルをセチE��(サブセチE��惁E��の中にあるマテリアルインチE��クスを使用)
+	//	// マテリアルをセット(サブセット内にあるマテリアルインデックスを使用)
 	//	m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
 
 
@@ -477,14 +515,14 @@ void Player::Draw()
 	//	}
 
 	//	m_MeshRenderer.DrawSubset(
-	//		m_subsets[i].IndexNum, // 描画するインチE��クス数
-	//		m_subsets[i].IndexBase, // 最初�EインチE��クスバッファの位置	
+	//		m_subsets[i].IndexNum, // 描画するインデックス数
+	//		m_subsets[i].IndexBase, // 最初のインデックスバッファの位置
 	//		m_subsets[i].VertexBase); // 頂点バッファの最初から使用
 	//}
 }
 
 //=======================================
-// 終亁E�E琁E
+// 終了処理
 //=======================================
 void Player::Uninit() {}
 
@@ -492,13 +530,13 @@ void Player::Uninit() {}
 
 
 //=======================================
-// プレイヤー前方のブロチE��取征E
+// プレイヤー前方のブロック取得
 //=======================================
 std::weak_ptr<Block> Player::GetBlockInFront() const
 {
 	if (!m_Map) return std::weak_ptr<Block>();
 
-	// プレイヤーの前方向�Eクトルを取征E
+	// プレイヤーの前方向ベクトルを取得
 	Vector3 forwardFlat = m_Forward;
 	forwardFlat.y = 0.0f;
 
@@ -508,7 +546,7 @@ std::weak_ptr<Block> Player::GetBlockInFront() const
 	}
 	forwardFlat.Normalize();
 
-	// すべてのブロチE��を取征E
+	// すべてのブロックを取得
 	auto blocks = SceneManager::GetInstance().FindAllObjects<Block>();
 
 	std::weak_ptr<Block> closestBlock;
@@ -518,29 +556,29 @@ std::weak_ptr<Block> Player::GetBlockInFront() const
 	{
 		if (auto block = weakBlock.lock())
 		{
-			// 既に破棁E��ラグが立ってぁE��ブロチE��はスキチE�E
+			// 既に破壊フラグが立っているブロックはスキップ
 			if (block->IsPendingDestroy())
 			{
 				continue;
 			}
 
-			// ブロチE��との距離を計箁E
+			// ブロックとの距離を計算
 			Vector3 blockPos = block->GetPosition();
 			Vector3 toBlock = blockPos - m_Position;
-			toBlock.y = 0.0f; // 高さは無要E
+			toBlock.y = 0.0f; // 高さは無視
 
 			float dist = toBlock.Length();
 
-			if (dist > WALL_BREAK_RANGE)// 篁E��夁E
+			if (dist > WALL_BREAK_RANGE)// 範囲外のブロックはスキップ
 			{
 				continue;
 			}
 
-			// プレイヤーの前方方向にあるかチェチE��
+			// プレイヤーの前方方向にあるかチェック
 			toBlock.Normalize();
 			float dot = forwardFlat.Dot(toBlock);
 
-			// 前方にあり篁E��冁E��、最も近いブロチE��を選抁E
+			// 前方にあり、最も近いブロックを選択
 			if (dot > 0.7f && dist < closestDist)
 			{
 				closestDist = dist;
@@ -555,7 +593,7 @@ std::weak_ptr<Block> Player::GetBlockInFront() const
 
 
 //=======================================
-// 壁破壊�E琁E
+// 壁破壊処理
 //=======================================
 void Player::TryBreakWall()
 {
@@ -566,7 +604,7 @@ void Player::TryBreakWall()
 		return;
 	}
 
-	// チャージ開始時に記録したターゲチE��ブロチE��を使用
+	// チャージ開始時に記録したターゲットブロックを使用
 	auto block = m_TargetBlock.lock();
 
 	if (!block)
@@ -574,13 +612,13 @@ void Player::TryBreakWall()
 		return;
 	}
 
-	// ブロチE��が既に破棁E��定�E場合�EスキチE�E
+	// ブロックが既に破壊予定の場合はスキップ
 	if (block->IsPendingDestroy())
 	{
 		return;
 	}
 
-	// ブロチE��のグリチE��座標を取征E
+	// ブロックのグリッド座標を取得
 	int gridX = block->GetGridX();
 	int gridY = block->GetGridY();
 
@@ -590,11 +628,13 @@ void Player::TryBreakWall()
 		return;
 	}
 
-	// マップグリチE��を更新(壁�E通路に変更)
+	// マップグリッドを更新(壁を通路に変更)
 	m_Map->DestroyWall(gridX, gridY);
 
-	// ブロチE��オブジェクトを削除
+	// ブロックオブジェクトを削除
 	block->Destroy();
 
 	std::cout << "Wall broken at grid (" << gridX << ", " << gridY << ")\n";
 }
+
+

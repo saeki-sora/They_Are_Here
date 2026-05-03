@@ -28,12 +28,12 @@ protected:
 	float m_Pitch = 0.0f;         // 垂直回転角度（ピッチ）
 	float m_MouseSensitivity = 0.005f;     // マウス感度
 	bool  m_MouseCaptured = true;         // マウスキャプチャ状態
-	bool  m_EscKeyPressed = false;        // ESCキーが押されたかのフラグ
-	Vector3 m_CameraOffset; // カメラのオフセット（プレイヤーからの相対位置）
+	bool  m_ClickToRecapture = true;      // 左クリックでキャプチャを復帰させるか（ポーズ中はfalse）
+	Vector3 m_CameraOffset; // カメラのオフセット
 
 	float m_WalkTimer = 0.0f;         // 歩行揺れ計算用タイマー
 	float m_BobbingSpeed = 14.0f;     // 揺れの速さ
-	float m_BobbingAmount = 5.5f;     // 揺れの大きさ（高さ）
+	float m_BobbingAmount = 3.5f;     // 揺れの大きさ（高さ）
 
 	// カメラ補間移動用
 	bool   m_IsInterpolating = false;   // 補間中フラグ
@@ -69,6 +69,9 @@ public:
 	void SetTarget(const DirectX::SimpleMath::Vector3& target) { m_Target = target; }
 	void SetLookAt(const Vector3& pos, const Vector3& target);
 	void SetMouseCaptured(bool captured) { m_MouseCaptured = captured; }
+	void SetClickToRecapture(bool allow) { m_ClickToRecapture = allow; } // ポーズ中はfalseにしてクリックでの誤キャプチャを防ぐ
+	void RecaptureMouseImmediate(); // ポーズ解除時に即マウス再キャプチャ
+	void ReleaseMouseImmediate();   // ポーズ開始時にマウスを解放
 
 	DirectX::SimpleMath::Vector3 GetPosition() const { return m_Position; }
 	DirectX::SimpleMath::Matrix GetViewMatrix()const { return m_ViewMatrix; }

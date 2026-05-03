@@ -3,11 +3,19 @@
 #include "StaticMesh.h"
 #include "utility.h"
 #include "Game.h"
-#include "Collision.h"
+#include "DebugManager.h"
 #include"TextureManager.h"
 
 using namespace std;
 using namespace DirectX::SimpleMath;
+
+// 静的メンバの実体定義
+MeshRenderer                           Block::s_SharedRenderer;
+bool                                   Block::s_MeshReady = false;
+DirectX::SimpleMath::Vector3           Block::s_ColliderExtents;
+std::vector<SUBSET>                    Block::s_SharedSubsets;
+std::vector<MATERIAL>                  Block::s_SharedMaterials;
+std::vector<std::shared_ptr<Texture>>  Block::s_NormalTextures;
 
 //コンストラクタ
 Block::Block(
@@ -19,90 +27,70 @@ Block::Block(
 	m_Rotation = { 0.0f, 0.0f, 0.0f };
 }
 
-// チE��トラクタ
+//デストラクタ
 Block::~Block(){}
 
 //=======================================
-// 初期化�E琁E
+// 初期化
 //=======================================
 void Block::Init()
 {
-	// メチE��ュ読み込み
-	StaticMesh staticmesh;
+	// FBXモデルは全インスタンスで共有するため、最初の1回だけロードしてGPUバッファを作成
+	if (!s_MeshReady)
+	{
+		StaticMesh staticmesh;
+		std::u8string modelFile = u8"assets/model/Block/Block.fbx";
+		std::string tmpStr1(reinterpret_cast<const char*>(modelFile.c_str()), modelFile.size());
+		staticmesh.Load(tmpStr1, "assets/model/Block");
 
-	// 3DモチE��チE�Eタ
-	std::u8string modelFile = u8"assets/model/Block/Block.fbx";
+		s_SharedRenderer.Init(staticmesh);
+		s_ColliderExtents  = staticmesh.GetMax() - staticmesh.GetMin();
+		s_SharedSubsets    = staticmesh.GetSubsets();
+		s_SharedMaterials  = staticmesh.GetMaterials();
+		s_NormalTextures   = staticmesh.GetTextures();
+		s_MeshReady = true;
+	}
 
-	// チE��スチャチE��レクトリ
-	std::string texDirectory = "assets/model/Block";
+	// 共有データからコピー
+	collider.size = GetScale() * s_ColliderExtents;
+	m_subsets  = s_SharedSubsets;
+	m_Textures = s_NormalTextures; // shared_ptrコピー
 
-	// Meshを読み込む
-	std::string tmpStr1(reinterpret_cast<const char*>(modelFile.c_str()), modelFile.size());
-	staticmesh.Load(tmpStr1, texDirectory);
-
-	m_MeshRenderer.Init(staticmesh);
-
-	//当たり判定用のサイズを設宁E
-	collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
-
-	// シェーダオブジェクト生戁E
+	// シェーダ
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
 
-	// サブセチE��惁E��取征E
-	m_subsets = staticmesh.GetSubsets();
-
-	// チE��スチャ惁E��取征E
-	m_Textures = staticmesh.GetTextures();
-
-	// タイプに応じてチE��スチャを変更
+	// タイプ別テクスチャ上書き
 	std::string overrideTexPath;
 	switch (m_type)
 	{
 	case BlockType::FarGoal:
-		overrideTexPath = "assets/texture/SpeedAreaBlock.png"; // 緁E
+		overrideTexPath = "assets/texture/SpeedAreaBlock.png";
 		break;
 	case BlockType::MidGoal:
-		overrideTexPath = "assets/texture/MidSpeedAreaBlock.png"; // 靁E
+		overrideTexPath = "assets/texture/MidSpeedAreaBlock.png";
 		break;
 	default:
-		break; // Normal はチE��ォルトテクスチャ�E�赤�E�E
+		break;
 	}
-
 	if (!overrideTexPath.empty())
 	{
-		// TextureManager経由でローチE
 		auto customTex = TextureManager::GetInstance().Load(overrideTexPath);
-
-		// リスト�E中身をすべてこ�EチE��スチャに入れ替える
-		for (auto& tex : m_Textures)
-		{
-			tex = customTex;
-		}
+		for (auto& tex : m_Textures) tex = customTex;
 	}
 
-
-	// マテリアル惁E��取征E
-	vector<MATERIAL> materials = staticmesh.GetMaterials();
-
-	// マテリアル数刁E��ーチE
-	for (int i = 0; i < materials.size(); ++i)
+	// マテリアル生成（IOなし、高速）
+	for (int i = 0; i < (int)s_SharedMaterials.size(); ++i)
 	{
-		materials[i].TextureEnable = true;
-
-		// マテリアルオブジェクト生戁E
+		MATERIAL mat = s_SharedMaterials[i];
+		mat.TextureEnable = true;
 		std::unique_ptr<Material> m = std::make_unique<Material>();
-
-		// マテリアル惁E��をセチE��
-		m->Create(materials[i]);
-
-		// マテリアルオブジェクトを配�Eに追加
+		m->Create(mat);
 		m_Materiales.push_back(std::move(m));
 	}
-
 }
 
 //=======================================
-// 更新処琁E
+// 更新処理
 //=======================================
 void Block::Update(float deltaTime)
 {
@@ -110,53 +98,72 @@ void Block::Update(float deltaTime)
 }
 
 //=======================================
-// 描画処琁E
+// 描画処理
 //=======================================
 void Block::Draw()
 {
-	// SRT惁E��作�E
+	// ワールド行列を計算
 	Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 	Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
 	Matrix s = Matrix::CreateScale(m_Scale.x, m_Scale.y, m_Scale.z);
 
 	Matrix worldmtx;
 	worldmtx = s * r * t;
-	Renderer::SetWorldMatrix(&worldmtx); // GPUにセチE��
+	Renderer::SetWorldMatrix(&worldmtx); // GPUにセット
 
 	m_Shader.SetGPU();
 
 	Renderer::BindLitCommonCB();
 
-	// インチE��クスバッファ・頂点バッファをセチE��
-	m_MeshRenderer.BeforeDraw();
+	// インデックスバッファ・頂点バッファをセット（共有GPUバッファ使用）
+	s_SharedRenderer.BeforeDraw();
 
-
-	//マテリアル数刁E��ーチE
+	//マテリアル数分ループ
 	for (int i = 0; i < m_subsets.size(); ++i)
 	{
-		// マテリアルをセチE��
+		// マテリアルをセット
 		m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
-
 
 		if (m_Materiales[m_subsets[i].MaterialIdx]->isTextureEnable())
 		{
 			m_Textures[m_subsets[i].MaterialIdx]->SetGPU();
 		}
 
-		m_MeshRenderer.DrawSubset(
-			m_subsets[i].IndexNum, // 描画するインチE��クス数
-			m_subsets[i].IndexBase, // 最初�EインチE��クスバッファの位置	
-			m_subsets[i].VertexBase); // 頂点バッファの最初から使用
+		s_SharedRenderer.DrawSubset(
+			m_subsets[i].IndexNum,
+			m_subsets[i].IndexBase,
+			m_subsets[i].VertexBase);
 	}
 
-//#ifdef _DEBUG
-//	Matrix colliderWorldMatrix = r * t;
-//	// スケールを含めなぁE���Eを渡して描画します、E
-//	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), colliderWorldMatrix);
-//#endif
+	if (DebugManager::GetInstance().ShouldShowColliders())
+	{
+		collider.DrawDebugCollider(Game::GetInstance().GetMainCamera());
+	}
+}
+
+// シャドウマップ描画
+void Block::DrawShadow()
+{
+	// ワールド行列を計算
+	Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
+	Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
+	Matrix s = Matrix::CreateScale(m_Scale.x, m_Scale.y, m_Scale.z);
+	Matrix worldmtx = s * r * t;
+
+	Renderer::SetWorldMatrix(&worldmtx);
+	Renderer::SetShadowStaticShader();
+	s_SharedRenderer.BeforeDraw();
+
+	for (int i = 0; i < m_subsets.size(); ++i)
+	{
+		s_SharedRenderer.DrawSubset(
+			m_subsets[i].IndexNum,
+			m_subsets[i].IndexBase,
+			m_subsets[i].VertexBase);
+	}
 }
 
 //=======================================
-// 終亁E�E琁E
+// 終了処理
 //=======================================
 void Block::Uninit(){}

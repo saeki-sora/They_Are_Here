@@ -1,21 +1,30 @@
-ï»¿//#pragma once
-//#include <d3d11.h>
-//
-////#include "imgui.h"
-////#include "imgui_impl_dx11.h"
-////#include "imgui_impl_win32.h"
-//
-//class ImGUI_Manager
-//{
-//public:
-//	
-//	void InitImGui(HWND hwnd, ID3D11Device* g_pd3dDevice, ID3D11DeviceContext* g_pd3dDeviceContext);
-//	void RenderImGui();
-//
-//	void UninitImGui();
-//
-//private:
-//
-//	float sliderValue = 0.5f; // ã‚¹ãƒ©ã‚¤ãƒ€ãƒ¼ã®åˆæœŸå€¤ã‚’0.5ã«è¨­å®š
-//};
-//
+#pragma once
+
+#include <d3d11.h>
+#include <Windows.h>
+
+class ImGUI_Manager
+{
+public:
+
+    static void Init(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* context);
+	static void DrawPanels();// ‘Sƒpƒlƒ‹‚ğ‚Ü‚Æ‚ß‚Ä•`‰æ‚·‚é
+    static void Render();
+    static void Uninit();
+
+	static bool IsVisible() { return s_Visible; }// ƒfƒoƒbƒOUI‚ª•\¦‚³‚ê‚Ä‚¢‚é‚©‚Ç‚¤‚©
+
+private:
+
+	static bool s_Initialized;// ImGui‚Ì‰Šú‰»‚ªŠ®—¹‚µ‚Ä‚¢‚é‚©‚Ç‚¤‚©
+	static bool s_Visible;// ƒfƒoƒbƒOUI‚ª•\¦‚³‚ê‚Ä‚¢‚é‚©‚Ç‚¤‚©
+
+	static int  s_SelectedEnemyUID;// Œ»İ‘I‘ğ‚³‚ê‚Ä‚¢‚é“G‚ÌUID
+
+	static void DrawEnemyParamPanel();// “G‚Ìƒpƒ‰ƒ[ƒ^‚ğ•\¦‚·‚éƒpƒlƒ‹
+	static void DrawFSMPanel();// “G‚Ìó‘Ô‘JˆÚ‚ğ‰Â‹‰»‚·‚é‚½‚ß‚ÌUI
+
+	// “G‚Ìó‘Ô‘JˆÚ—š—ğ‚ğƒ^ƒCƒ€ƒ‰ƒCƒ“Œ`®‚Å•`‰æ‚·‚é
+    static void DrawFSMGraph(const std::string& currentState);
+    static void DrawTransitionTimeline(int uid);
+};

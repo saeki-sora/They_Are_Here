@@ -1,6 +1,0 @@
-﻿C:\Projrcts\They_Are_Here\src\MakeMap.cpp(882,2): error C2059: ?????: '}' [C:\Projrcts\They_Are_Here\src\TheyAreHere.vcxproj]
-C:\Projrcts\They_Are_Here\src\MakeMap.cpp(882,2): error C2143: ?????: ';' ? '}' ????????? [C:\Projrcts\They_Are_Here\src\TheyAreHere.vcxproj]
-C:\Projrcts\They_Are_Here\src\MakeMap.cpp(883,1): error C2143: ?????: ';' ? '}' ????????? [C:\Projrcts\They_Are_Here\src\TheyAreHere.vcxproj]
-C:\Projrcts\They_Are_Here\src\MakeMap.cpp(883,1): error C2059: ?????: '}' [C:\Projrcts\They_Are_Here\src\TheyAreHere.vcxproj]
-C:\Projrcts\They_Are_Here\src\MakeMap.cpp(890,1): error C2143: ?????: ';' ? '{' ????????? [C:\Projrcts\They_Are_Here\src\TheyAreHere.vcxproj]
-C:\Projrcts\They_Are_Here\src\MakeMap.cpp(890,1): error C2447: '{': ???????????????? (???????????) [C:\Projrcts\They_Are_Here\src\TheyAreHere.vcxproj]

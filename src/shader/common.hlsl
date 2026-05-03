@@ -1,5 +1,4 @@
-// Common HLSL definitions for DirectX 11 shaders
-#define MAX_POINT_LIGHTS 8
+#define MAX_POINT_LIGHTS 32//ポイントライトの最大数
 
 cbuffer WorldBuffer : register(b0)
 {
@@ -24,11 +23,12 @@ struct VS_IN
 
 struct PS_IN
 {
-    float4 pos : SV_POSITION;
-    float4 col : COLOR0;
-    float2 tex : TEXCOORD0;
-    float4 worldPos : TEXCOORD1;
-    float3 normal : NORMAL0;
+    float4 pos         : SV_POSITION;
+    float4 col         : COLOR0;
+    float2 tex         : TEXCOORD0;
+    float4 worldPos    : TEXCOORD1;
+    float3 normal      : NORMAL0;
+    float4 shadowCoord : TEXCOORD2;  // ライト視点座標
 };
 
 struct LIGHT
@@ -77,4 +77,10 @@ cbuffer TextureMatrixBuffer : register(b5)
 cbuffer NormalMatrixBuffer : register(b7)
 {
     matrix WorldInverseTranspose;
+}
+
+// シャドウマップ用ライト行列
+cbuffer ShadowBuffer : register(b8)
+{
+    matrix LightViewProj;
 }

@@ -1,13 +1,14 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "InvisibleItem.h"
 #include "StaticMesh.h"
 #include "utility.h"
 #include "SceneManager.h"
-#include "Collision.h"
 #include "Player.h"
 #include"Renderer.h"
 #include "EffectManager.h"
 #include "InvisibleEffect.h"
+#include "DebugManager.h"
+#include "Game.h"
 
 using namespace std;
 using namespace DirectX::SimpleMath;
@@ -77,7 +78,8 @@ void InvisibleItem::Init()
 //=======================================
 void InvisibleItem::Update(float deltaTime)
 {
-	m_Rotation.y += 0.01f;//アイチE��の回転
+	m_Rotation.y += 0.01f;
+	collider.rotation = DirectX::SimpleMath::Quaternion::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 
 	//プレイヤーを取征E
 	auto playerWeak = SceneManager::GetInstance().FindObject<Player>();
@@ -133,18 +135,15 @@ void InvisibleItem::Draw()
 		}
 	
 
-	//#ifdef _DEBUG
-	//	Matrix colliderWorldMatrix = r * t;
-	//	// スケールを含めなぁE���Eを渡して描画します、E
-	//	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), colliderWorldMatrix);
-	//#endif
+    if (DebugManager::GetInstance().ShouldShowColliders()) { collider.DrawDebugCollider(Game::GetInstance().GetMainCamera()); }
 }
 
 
 
 //=======================================
-// 終亁E�E琁E
+// 終了処理
 //=======================================
 void InvisibleItem::Uninit()
 {
 }
+

@@ -1,208 +1,240 @@
 ﻿#pragma once
-#include"ColliderObject.h"
-#include"SceneBase.h"
-#include"Pathfinder.h"
+#include "ColliderObject.h"
+#include "SceneBase.h"
+#include "Pathfinder.h"
+#include "DifficultyConfig.h"
 
 class Block;
 
-//生成した迷路を２次元配列に格納
 
-namespace MAP {
-
+//マップ全体で共有される「コンパイル時定数」のみを置く
+namespace MAP
+{
 	struct Config
 	{
-		//マップ関連
-		static constexpr std::uint16_t MaxX = 31;//横セル数（X方向）必ず奇数にすること
-		static constexpr std::uint16_t MaxY = 31;//縦セル数（Y方向）
-		static constexpr float  BLOCK_SIZE = 55.0f; //１セルあたりの物理サイズ
-		static constexpr float CornerRate = 75.0f;//曲がり角を作る確率(%)
+		// ---- マップ配列の上限サイズ----
+		// Hard難易度の 41x41 が最大。これ以上の難易度を追加する場合は拡張する。
+		static constexpr std::uint16_t MAX_SIZE = 41;
 
-		//敵関連
-		static constexpr float EnemyGoalDistWeight = 0.7f;//敵のスタート位置をゴールから遠ざける重み
-		static constexpr float EnemyDensity = 1.0f / 80.0f;//敵の密度（1セルあたりの敵の数）
-		static constexpr int   MinEnemies = 2;//敵の数の最低値
-		static constexpr int   MaxEnemies = 15;//敵の数の上限値
-		static constexpr int   EnemyMinSeparation = 4;//敵同士の最低距離（マンハッタン距離）
-		static constexpr int   EnemySpawnSafeRadius = 3; // 敵がスポーンしない安全圏（スタート/ゴールからの距離）
+		// ---- 変更しない定数 ----
+		static constexpr float  BLOCK_SIZE = 55.0f;       // 1セルの物理サイズ
+		static constexpr float  CornerRate = 75.0f;       // 曲がり角確率(%)
 
-		//透明化アイテム関連
-		static constexpr int   Num_InvisibleItem = 5; //配置する透明化アイテムの数
+		static constexpr float  EnemyGoalDistWeight = 0.7f;  // 敵スポーン：ゴール遠ざけ重み
+		static constexpr float  EnemyDensity = 1.0f / 80.f; // 敵密度（敵数自動計算時）
+		static constexpr int    MinEnemies = 2;           // 敵の最低数（自動計算時）
+		static constexpr int    MaxEnemies = 15;          // 敵の最大数（自動計算時）
+		static constexpr int    EnemyMinSeparation = 4;           // 敵同士の最低マンハッタン距離
+		static constexpr int    EnemySpawnSafeRadius = 3;           // スタート/ゴール周辺の安全圏
 
-		//広場関連
-		static constexpr int   SquareSize = 6; //広場の半径をマップ幅の何分の１にするか(セル単位)
-		static constexpr int ClearanceSearchRadius = 15;// クリアランス計算で探索する最大半径
+		static constexpr int    SquareSize = 6;           // 広場半径（マップ幅の 1/N）
+		static constexpr int    ClearanceSearchRadius = 15;          // クリアランス探索半径
 
-		// ゴール距離による壁色変化
-		static constexpr int GoalNearRadius = 10;  // 赤ゾーン半径（マンハッタン距離）
-		static constexpr int GoalMidRadius  = 20;  // 青ゾーン半径
+		static constexpr float GOAL_NEAR_RATIO = 1.0f / 3.0f;//ゴール近距離ゾーンの比率（全難易度共通）
+		static constexpr float GOAL_MID_RATIO = 2.0f / 3.0f;//ゴール中距離ゾーンの比率（全難易度共通）
+
+		// ランプ
+		static constexpr float LampRangeScale = 2.5f;   // 照射範囲 = BLOCK_SIZE × この値
+		static constexpr float LampHeightRatio = 0.6f;   // Y座標  = BLOCK_SIZE × この値
+		static constexpr float FlameColorG = 0.55f;
+		static constexpr float FlameColorB = 0.1f;
+
+		// コライダーサイズ
+		static constexpr float EnemySize = 0.3f;
+		static constexpr float EnemyFallbackSize = 0.7f; // フォールバック配置時のサイズ（通常と異なる。要確認）
+		static constexpr float PlayerSizeXZ = 1.0f;
+		static constexpr float PlayerSizeY = 0.3f;
+		static constexpr float KeySize = 20.0f;
+		static constexpr float FloorThickness = 10.0f;  // 床オブジェクトのY厚み
+		static constexpr float ItemHeightRatio = 0.25f;  // アイテムのY座標 = BLOCK_SIZE × この値
+
+		// 配置試行上限
+		static constexpr int MaxPlaceAttempts = 100;
+		static constexpr int MaxWallAttempts = 1000;
 	};
-};
+}
 
 
-// ブロックの種類を定義
-enum class BlockType 
+// ---- ブロックの種類（ゴールからの距離で色が変わる） ----
+enum class BlockType
 {
-	Normal,    // デフォルト（赤：ゴール近距離）
-	MidGoal,   // ゴール中距離（青）
-	FarGoal    // ゴール遠距離（緑）
+	Normal,    // 赤：ゴール近距離
+	MidGoal,   // 青：ゴール中距離
+	FarGoal    // 緑：ゴール遠距離
 };
 
 
+// ---- 1オブジェクトの配置仕様 ----
 struct ObjectSpec
 {
-	int gridX, gridY; // 迷路のグリッド座標
+	int gridX, gridY;
 	DirectX::SimpleMath::Vector3 pos;
 	DirectX::SimpleMath::Vector3 size;
-	BlockType type = BlockType::Normal; //ブロックの種類。デフォルトは通常
+	BlockType type = BlockType::Normal;
 };
 
 
-struct MapBuildPlan 
+// ---- ランプ1個の配置仕様 ----
+struct LampSpec
 {
-	int map[MAP::Config::MaxX][MAP::Config::MaxY]{};
+	DirectX::SimpleMath::Vector3 position; // 壁面から通路側にオフセットしたワールド座標
+	DirectX::SimpleMath::Vector3 faceDir;  // 通路方向の単位ベクトル
+};
+
+
+// ---- マップ生成計画 ----
+struct MapBuildPlan
+{
+	// 内部配列は MAX_SIZE で確保
+	int map[MAP::Config::MAX_SIZE][MAP::Config::MAX_SIZE]{};
+
 	std::vector<ObjectSpec> player;
 	std::vector<ObjectSpec> enemy;
 	std::vector<ObjectSpec> start;
 	std::vector<ObjectSpec> floorBlocks;
-	std::vector<ObjectSpec> blocks; // 置くべきブロックの一覧
+	std::vector<ObjectSpec> blocks;
 	std::vector<ObjectSpec> goal;
-	std::vector<ObjectSpec> InvisibleItem;//透明化アイテム用リスト
+	std::vector<ObjectSpec> InvisibleItem;
+	std::vector<LampSpec>   lamps;
 
-
-	int keyEnemyIndex = -1; // カギを持っている敵のインデックス
+	int keyEnemyIndex = -1; // カギを持つ敵のインデックス
 };
+
+
+// ================================================================================
+// MakeMap クラス
+// ================================================================================
 
 class MakeMap
 {
 private:
 
-	//壁を作る方向
-	enum direction
+	// ---- 壁を伸ばす方向 ----
+	enum direction { Up, Down, Left, Right };
+
+	// ---- 敵の種類 ----
+	enum class EnemyType { Normal, Stalker, Lover };
+
+	// ---- 迷路生成中の作業位置 ----
+	struct MakeNowPosition
 	{
-		Up,
-		Down,
-		Left,
-		Right
-	};
-
-
-
-	//敵の種類
-	enum class EnemyType
-	{
-		Normal,
-		Stalker,
-		Lover
-	};
-
-
-
-	// 迷路盤面の座標は構造体で管理
-	struct MakeNowPosition {
-
 		std::uint16_t x{};
 		std::uint16_t y{};
 	};
 
-	// 迷路盤(基礎的なマップ生成に使う一時変数)
-	int MAP[MAP::Config::MaxX][MAP::Config::MaxY]{}; // 1:壁, 0:通路
-	int NowX = 0, NowY = 0;                                //計算の際の一時的な現在のポジション
-	int StartX = 0, StartY = 0, GoalX = 0, GoalY = 0;              //スタートとゴールの座標
-	std::uint16_t PlayerPosX = 0, PlayerPosY = 0;          //プレイヤーの座標
-	int EnemyStartX = 0, EnemyStartY = 0;                  //敵のスタート座標
-	direction dir;                                 //前回の進んだ方向
-	std::uint16_t wallCount = 0;                   // 壁の数をカウントする変数
-	std::vector<std::weak_ptr<Block>> blocks;                    // 複数のブロックを格納するベクター
+	// ================================================================================
+	// 難易度によって変わる値
+	// ================================================================================
+	int m_SizeX = 31;  // 使用するマップのX幅（奇数）
+	int m_SizeY = 31;  // 使用するマップのY幅（奇数）
+	int m_NumInvisibleItems = 5;   // 配置するアイテム数
+	int m_GoalNearRadius = 0;  // 赤ゾーン半径（Configure()で比率から計算）
+	int m_GoalMidRadius = 0;  // 青ゾーン半径（Configure()で比率から計算）
+	int m_EnemyCountOverride = 0; // 敵の数上書き設定（0なら自動計算）
+	int m_StalkerCount = 0;     // Stalker 敵の数（Configure() でセット）
+	int m_LoverPairCount = 0;     // Lovers ペア数（Configure() でセット）
+	int m_LampCount = 16;          // マップに配置するランプの個数
 
-	float m_ClearanceMap[MAP::Config::MaxX][MAP::Config::MaxY]; //最も近い壁までの距離を格納する配列
+	// ---- 迷路本体の2次元配列 ----
+	int MAP[MAP::Config::MAX_SIZE][MAP::Config::MAX_SIZE]{};
 
-	
+	// ---- 生成中に使う一時変数 ----
+	int NowX = 0, NowY = 0;
+	int StartX = 0, StartY = 0, GoalX = 0, GoalY = 0;
+	std::uint16_t PlayerPosX = 0, PlayerPosY = 0;
+	int EnemyStartX = 0, EnemyStartY = 0;
+	direction dir;
+	std::uint16_t wallCount = 0;
+	std::vector<std::weak_ptr<Block>> blocks;
 
-	//エリア管理用構造体
-	struct CircleArea
-	{
-		int cx = -1;
-		int cy = -1;
-		int radius = 0;
-	};
+	// ---- クリアランスマップ（各セルから最も近い壁までの距離） ----
+	float m_ClearanceMap[MAP::Config::MAX_SIZE][MAP::Config::MAX_SIZE]{};
 
-	CircleArea plazaInfo; // 広場の情報を保持
+	// ---- 広場エリア情報 ----
+	struct CircleArea { int cx = -1; int cy = -1; int radius = 0; };
+	CircleArea plazaInfo;
 
+	// ---- 生成計画（バックグラウンドで作成し SpawnObjects で使う） ----
+	MapBuildPlan plan;
 
-	MapBuildPlan plan;//マップ生成計画を格納する構造体
-
-	// 乱数生成器とディストリビューション
+	// ---- 乱数 ----
 	mutable std::random_device rd;
 	mutable std::mt19937 gen;
 	mutable std::uniform_int_distribution<int> dir_dist;
-	mutable std::uniform_int_distribution<int> pos_x_dist;
-	mutable std::uniform_int_distribution<int> pos_y_dist;
+	mutable std::uniform_int_distribution<int> pos_x_dist;  // Configure() で再初期化
+	mutable std::uniform_int_distribution<int> pos_y_dist;  // Configure() で再初期化
 	mutable std::uniform_int_distribution<int> percent_dist;
 
+	// ---- 生成サブ関数 ----
 	void Init();
-	void SetWall(); //壁を配置
-	void SetFloor(); //床を配置
-	void SetObjects();//スタートとゴールの座標を設定
-	void SettingBlocks();//ブロックを配置
-	void SetLandmarks();//ランドマークを配置
-	void SetPark();//広場を配置
-	void SetItems();//透明化アイテムを配置
+	void SetWall();
+	void SetFloor();
+	void SetObjects();
+	void SettingBlocks();
+	void SetLandmarks();
+	void SetPark();
+	void SetItems();
+	void SetLamps();
 
-	direction Decide_Direction()const;//上下左右どちらに壁を作るか決める
-	void WallCompleteCheck();//上下左右が全て作成中の壁ではないか確認
-	void ResizeBlocks(const std::uint16_t);//ブロックの数に合わせてベクターのサイズを変更
+	direction Decide_Direction() const;
+	void WallCompleteCheck();
+	void ResizeBlocks(const std::uint16_t);
 
-	// 敵配置関連
-	int CalcEnemyCountFromMap() const;// 敵の密度から敵の数を計算
-	std::vector<GridCoord> CollectEnemySpawnCells() const;// 敵のスポーン可能セルを収集
-	float CalcEnemyScore(int x, int y) const;// 敵スポーンセルのスコアを計算
-
-	// 敵の種類を決定
-	EnemyType DecideEnemyType(int index, int stalkerIdx, int loverIdx1, int loverIdx2) const;
-
-	// 敵オブジェクトを生成
-	std::shared_ptr<ColliderObject> CreateEnemy(SceneBase* scene, EnemyType type, const DirectX::SimpleMath::Vector3& pos, const DirectX::SimpleMath::Vector3& size);
-
-	// カギを生成して敵に持たせる
-	void CreateKey(SceneBase* scene, std::shared_ptr<ColliderObject> targetEnemy, EnemyType type);
+	// ---- 敵配置 ----
+	int CalcEnemyCountFromMap() const;
+	std::vector<GridCoord> CollectEnemySpawnCells() const;
+	float CalcEnemyScore(int x, int y) const;
+	EnemyType DecideEnemyType(int index, const std::vector<int>& stalkerIndices, int loverIdx1, int loverIdx2) const;
+	std::shared_ptr<ColliderObject> CreateEnemy(
+		SceneBase* scene, EnemyType type,
+		const DirectX::SimpleMath::Vector3& pos,
+		const DirectX::SimpleMath::Vector3& size);
+	void CreateKey(SceneBase* scene,
+		std::shared_ptr<ColliderObject> targetEnemy, EnemyType type);
 
 public:
 
 	MakeMap();
 	~MakeMap() = default;
 
-	// コピー・ムーブを禁止
+	// コピー・ムーブ禁止
 	MakeMap(const MakeMap&) = delete;
 	MakeMap& operator=(const MakeMap&) = delete;
 	MakeMap(MakeMap&&) = delete;
 	MakeMap& operator=(MakeMap&&) = delete;
 
-	void CreatePlan();//各オブジェクトの配置情報を作成
-	void SpawnObjects(SceneBase* scene);//マップオブジェクトを生成してシーンに追加
+	// ---- 難易度設定を適用する ----
+	void Configure(const DifficultyConfig& config);
 
-	const std::vector<std::weak_ptr<Block>>& GetBlocks() const { return blocks; }//全ブロックを取得
+	// ---- マッププラン生成 ----
+	void CreatePlan();
 
-	size_t GetBlockCount() const { return blocks.size(); }//ブロックの総数を取得
+	// ---- シーンへのオブジェクト配置 ----
+	void SpawnObjects(SceneBase* scene);
 
-	// スタートとゴールの座標を取得
-	void GetStartGoal(int& startX, int& startY, int& goalX, int& goalY) const
+	// ---- マップサイズ取得 ----
+	int GetSizeX() const { return m_SizeX; }
+	int GetSizeY() const { return m_SizeY; }
+	int GetGoalNearRadius() const { return m_GoalNearRadius; }  // ゴール近接ゾーン半径（赤）
+	int GetGoalMidRadius()  const { return m_GoalMidRadius; }  // ゴール中距離ゾーン半径（青）
+
+	// ---- ブロック情報取得 ----
+	const std::vector<std::weak_ptr<Block>>& GetBlocks() const { return blocks; }
+	size_t GetBlockCount() const { return blocks.size(); }
+
+	// ---- スタート・ゴール座標取得 ----
+	void GetStartGoal(int& startX, int& startY, int& goalX, int& goalY) const { startX = StartX; startY = StartY; goalX = GoalX; goalY = GoalY; }
+
+	// ---- クリアランス情報取得 ----
+	float GetClearance(int gridX, int gridY) const;
+	void  CalculateClearance();
+	bool  IsWalkable(int x, int y) const;
+
+	// GetMap(): 内部配列への読み取り専用参照
+	const int(&GetMap() const)[MAP::Config::MAX_SIZE][MAP::Config::MAX_SIZE]
 	{
-		startX = StartX; startY = StartY; goalX = GoalX; goalY = GoalY;
+		return MAP;
 	}
 
-	// 指定セルのクリアランスを取得
-	float GetClearance(int gridX, int gridY) const;
-
-	// クリアランス計算用関数の宣言
-	void CalculateClearance();
-
-	// 指定セルが壁でなければtrueを返す
-	bool IsWalkable(int x, int y) const;
-
-	// 内部の MAP 配列を取得（外部は読み取り専用）
-	const int(&GetMap() const)[MAP::Config::MaxX][MAP::Config::MaxY]{ return MAP; }
-	
-	void DestroyWall(int x, int y);// 指定したグリッド座標の壁を通路に変更する
-
+	void DestroyWall(int x, int y);
 };
-

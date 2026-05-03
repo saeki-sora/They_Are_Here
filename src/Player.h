@@ -25,7 +25,7 @@ private:
 	bool m_MouseCaptured = true; // マウスキャプチャ状態
 
 	float m_InvisibleTime;//透明化効果時間
-	const int m_MaxInvisibleStock = 3;//透明化アイテムの最大ストック数
+	int m_MaxInvisibleStock = 3;//透明化アイテムの最大ストック数（難易度に応じて SetMaxInvisibleStock() で変更する）
 	int m_InvisibleStock = 3;//透明化アイテムのストック数
 	bool m_IsInvisible= false; //透明化フラグ
 	float m_InvisibleTimer = 0.0f; //透明化タイマー
@@ -50,16 +50,20 @@ private:
 	MakeMap* m_Map = nullptr; // マップグリッド操作用
 
 	// スタミナ関連
-	float m_Stamina    = 100.0f;  // スタミナ現在値
-	float m_MaxStamina = 100.0f;  // スタミナ最大値
-	bool  m_IsDashing  = false;   // ダッシュ中フラグ
+	float m_Stamina     = 100.0f;  // スタミナ現在値
+	float m_MaxStamina  = 100.0f;  // スタミナ最大値
+	bool  m_IsDashing   = false;   // ダッシュ中フラグ
+	bool  m_IsExhausted = false;   // スタミナ枯渇ペナルティ中
+	float m_ExhaustedTimer = 0.0f; // 枯渇ペナルティ残り時間
+	bool  m_DashLocked  = false;   // 枯渇後に Shift 再押しが必要
 
 	static constexpr float DASH_SPEED_MULT       = 1.8f;  // ダッシュ時の速度倍率
 	static constexpr float STAMINA_DRAIN_RATE    = 30.0f; // 消費速度 (/秒)
-	static constexpr float STAMINA_REGEN_NEAR    =  5.0f; // 赤ゾーン（ゴール付近）回復速度
+	static constexpr float STAMINA_REGEN_NEAR    =  5.0f; // 赤ゾーン回復速度
 	static constexpr float STAMINA_REGEN_MID     = 12.0f; // 青ゾーン回復速度
-	static constexpr float STAMINA_REGEN_FAR     = 20.0f; // 緑ゾーン（スタート付近）回復速度
+	static constexpr float STAMINA_REGEN_FAR     = 20.0f; // 緑ゾーン回復速度
 	static constexpr float STAMINA_DASH_THRESHOLD = 15.0f; // ダッシュ開始に必要な最低スタミナ
+	static constexpr float EXHAUSTED_COOLDOWN    =  2.0f; // 枯渇後のダッシュ禁止時間（秒）
 
 	DashEffect* m_DashEffect = nullptr; // ダッシュエフェクト（所有権はEffectManager）
 
@@ -99,6 +103,7 @@ public:
 	void SetCanMove(bool canMove) { m_CanMove = canMove; }// 移動可能フラグの設定
 	void CanMove(bool canMove) { m_CanMove = canMove; }// 移動可能フラグの設定
 	void SetHasKey(bool hasKey) { m_HasKey = hasKey; }// カギ所持フラグの設定
+	void SetMaxInvisibleStock(int stock) { m_MaxInvisibleStock = stock; m_InvisibleStock = stock; }// 最大ストック数を設定し、現在ストックも合わせる
 
 
 	//ゲッター

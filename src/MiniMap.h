@@ -4,6 +4,8 @@
 
 class MakeMap;
 class Player;
+class GoalKey;
+class Pole;
 
 class MiniMap : public VisualObject
 {
@@ -18,13 +20,20 @@ public:
 
     void SetMap(MakeMap* map);
 
+    void BakeStaticMap();            // 壁を書き込む関数
+
+    void SetGoalKey(std::shared_ptr<GoalKey> key) { m_GoalKey  = key; }
+    void SetGoalPole(std::shared_ptr<Pole> pole)  { m_GoalPole = pole; }
+
 private:
 
     // UV調整用の定数バッファ構造体
     struct UVAdjustBuffer
     {
-        DirectX::SimpleMath::Vector2 uvOffset;
-        DirectX::SimpleMath::Vector2 uvScale;
+        DirectX::SimpleMath::Vector2 uvOffset;   // 8バイト
+        DirectX::SimpleMath::Vector2 uvScale;    // 8バイト
+        float mapRotation;                       // 4バイト（小マップ回転角・ラジアン）
+        float _pad[3];                           // 12バイトパディング（合計32バイト）
     };
 
     void CreateRenderTargets();
@@ -32,6 +41,10 @@ private:
     void UpdateFog(const DirectX::SimpleMath::Vector3& playerPos);
 
     MakeMap* m_MapData = nullptr;
+
+    // 方向インジケーター用参照
+    std::weak_ptr<GoalKey> m_GoalKey;
+    std::weak_ptr<Pole>    m_GoalPole;
 	bool m_IsLargeMap = false;// 大マップ表示フラグ
 	bool m_PrevMKey = false;// 前フレームのMキー状態
 
@@ -55,6 +68,11 @@ private:
     Texture m_TexFogBrush;
     Texture m_TexFrame;
 
+    // 方向インジケーター用テクスチャ
+    Texture m_TexDirArrow;  // 矢印（回転あり）
+    Texture m_TexDirKey;    // 鍵アイコン（回転なし）
+    Texture m_TexDirGoal;   // ゴールアイコン（回転なし）
+
     // シェーダー
     std::unique_ptr<Shader> m_MiniMapShader;
 
@@ -65,5 +83,9 @@ private:
 
     // 事前描画用関数
     void CreateStaticMapResources(); // リソース作成
-    void BakeStaticMap();            // 壁を書き込む関数
+
+    // 方向インジケーター描画
+    void DrawDirectionIndicator(
+        float mapCX, float mapCY, float mapSize,
+        const DirectX::SimpleMath::Vector2& uvOffset, float uvScale, float mapRotAngle);
 };

@@ -60,7 +60,7 @@ struct LIGHT
 };
 
 
-constexpr int MAX_POINT_LIGHTS = 8; // 最大点光源数 (HLSLと合わせる)
+constexpr int MAX_POINT_LIGHTS = 32; // 最大点光源数 (HLSLと合わせる)
 
 // 点光源単体のデータ
 struct DYNAMIC_LIGHT_DATA
@@ -149,6 +149,16 @@ private:
 
 	static LIGHT_CONSTANT_BUFFER m_LightData;//現在のライト情報を保持する変数
 
+	// シャドウマップ用リソース
+	static ID3D11Texture2D*          m_ShadowMapTex;
+	static ID3D11DepthStencilView*   m_ShadowDSV;
+	static ID3D11ShaderResourceView* m_ShadowSRV;
+	static ID3D11SamplerState*       m_ShadowSampler;
+	static ID3D11Buffer*             m_ShadowBuffer;
+	static ID3D11RasterizerState*    m_ShadowRS;
+	static Shader                    m_ShadowStaticShader;   // スタティックメッシュ用
+	static Shader                    m_ShadowSkinnedShader;  // スキニングメッシュ用
+
 	//ライト情報をGPUへ送る内部関数
 	static void PushLightBuffer();
 
@@ -159,6 +169,13 @@ public:
 	static void Uninit();
 	static void Begin();
 	static void End();
+
+	// シャドウパス
+	static void BeginShadowPass();
+	static void EndShadowPass();
+	static void SetShadowStaticShader();
+	static void SetShadowSkinnedShader();
+	static void DrawShadow(const SkinnedModel& model, const DirectX::SimpleMath::Matrix& world);
 
 	//セッター
 	static void SetDepthEnable(bool Enable);
@@ -217,6 +234,7 @@ public:
 	static int AddSpotLight(const DirectX::SimpleMath::Vector3& pos, const DirectX::SimpleMath::Vector3& dir, float range, float angleDeg, const DirectX::SimpleMath::Color& color);
 
 	// 光源を更新する
+	static void UpdatePointLight(int id, const DirectX::SimpleMath::Vector3& pos, float range, const DirectX::SimpleMath::Color& color);
 	static void UpdateSpotLight(int id, const DirectX::SimpleMath::Vector3& pos, const DirectX::SimpleMath::Vector3& dir, float range, float angleDeg, const DirectX::SimpleMath::Color& color);
 
 	// 光源を削除する

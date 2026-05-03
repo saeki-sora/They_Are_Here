@@ -7,16 +7,16 @@ class IScene;
 class SceneTransition;
 class SceneLoadingTask;
 
-// シーン識別子�E型定義
+// シーンIDは型情報を使用して一意に識別
 using SceneId = std::type_index;
 
-// シーン状慁E
+// シーン状態
 enum class SceneState 
 {
-    Unloaded,      // 未ローチE
+    Unloaded,      // 未ロード
     Loading,       // ロード中
-    Ready,         // 準備完亁E
-    Active,        // アクチE��チE
+    Ready,         // 準備完了
+    Active,        // アクティブ
     Paused,        // 一時停止
     Transitioning, // 遷移中
     Unloading      // アンロード中
@@ -34,12 +34,12 @@ public:
     }
 };
 
-// シーンマネージャー�E�シングルトン�E�E
+// シーンマネージャー（シングルトン）
 class SceneManager
 {
 private:
 
-    // シーン惁E��構造佁E
+    // シーン情報構造体
     struct SceneInfo
     {
         std::unique_ptr<IScene> scene;
@@ -59,7 +59,7 @@ private:
     // シーンファクトリー登録
     std::unordered_map<SceneId, std::function<std::unique_ptr<IScene>()>> m_SceneFactories;
 
-    // ローチE��ング管琁E
+    // ローディング管理
     std::queue<std::unique_ptr<SceneLoadingTask>> m_LoadingQueue;
     std::atomic<bool> m_IsLoading{ false };
 
@@ -71,20 +71,20 @@ private:
     ~SceneManager();
 
 public:
-    // シングルトンインスタンス取征E
+    // シングルトンインスタンス取得
     static SceneManager& GetInstance();
 
-    // コピ�E/ムーブ禁止
+    // コピー/ムーブ禁止
     SceneManager(const SceneManager&) = delete;
     SceneManager& operator=(const SceneManager&) = delete;
     SceneManager(SceneManager&&) = delete;
     SceneManager& operator=(SceneManager&&) = delete;
 
-    // 初期化�E終亁E
+    // 初期化・終了処理
     void Init();
     void Uninit();
 
-    // シーン登録�E�型安�E版！E
+    // シーン登録・型安全版
     template<SceneConcept T>
     void RegisterScene() 
     {
@@ -92,7 +92,7 @@ public:
         m_SceneFactories[id] = []() { return SceneFactory::Create<T>(); };
     }
 
-    // シーン操佁E
+    // シーン操作
     template<SceneConcept T>
     void ChangeScene(std::unique_ptr<SceneTransition> transition = nullptr)
     {
@@ -113,15 +113,17 @@ public:
     // 更新・描画
     void Update(float deltaTime);
     void Draw();
-    void DrawUI();  // UI専用描画
+    void DrawUI();        // UI専用描画
+    void DrawOverlayUI(); // エフェクトより上にUIを描画
     void DrawTransition();
+    void DrawShadow();    // シャドウマップパス用
 
-    // 状態取征E
+	// 状態取得
     bool IsTransitioning() const { return m_IsTransitioning; }
     bool IsLoading() const { return m_IsLoading; }
     float GetLoadProgress() const;
 
-    SceneTransition* GetCurrentTransition() const { return m_Transition.get(); }// 現在のシーントランジション取征E
+    SceneTransition* GetCurrentTransition() const { return m_Transition.get(); }// 現在のシーントランジション取得
 
     template<SceneConcept T>
     T* GetScene() {
@@ -133,11 +135,11 @@ public:
         return nullptr;
     }
 
-    // 現在のシーン取征E
+    // 現在のシーン取得
     IScene* GetCurrentScene();
     const IScene* GetCurrentScene() const;
 
-    // オブジェクト検索�E�現在のシーンに委譲�E�E
+    // オブジェクト検索は現在のシーンに委譲
     template<class T>
     std::weak_ptr<T> FindObject() {
         if (auto* scene = dynamic_cast<SceneBase*>(GetCurrentScene())) {
@@ -154,7 +156,7 @@ public:
         return {};
     }
 
-    // コールバック設宁E
+    // コールバック設定
     void SetLoadProgressCallback(std::function<void(float)> callback) {
         m_OnLoadProgress = callback;
     }
@@ -174,7 +176,7 @@ private:
 
 
 
-// ローチE��ングタスク
+// ローディングタスク
 class SceneLoadingTask {
 public:
     SceneLoadingTask(SceneId id, std::function<void()> loadFunc)
@@ -188,7 +190,7 @@ private:
     std::function<void()> m_LoadFunction;
 };
 
-// ローチE��ング画面インターフェース
+// ローディング画面インターフェース
 class ILoadingScreen {
 public:
     virtual ~ILoadingScreen() = default;
@@ -197,7 +199,7 @@ public:
     
 };
 
-// チE��ォルトローチE��ング画面
+// デフォルトローディング画面
 class DefaultLoadingScreen : public ILoadingScreen {
 private:
     float m_Progress = 0.0f;

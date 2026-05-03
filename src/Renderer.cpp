@@ -48,6 +48,16 @@ Shader Renderer::m_SkinnedShader{};
 
 LIGHT_CONSTANT_BUFFER Renderer::m_LightData{};//現在のライト情報を保持する変数
 
+// シャドウマップ用リソース
+ID3D11Texture2D*          Renderer::m_ShadowMapTex   = nullptr;
+ID3D11DepthStencilView*   Renderer::m_ShadowDSV      = nullptr;
+ID3D11ShaderResourceView* Renderer::m_ShadowSRV      = nullptr;
+ID3D11SamplerState*       Renderer::m_ShadowSampler  = nullptr;
+ID3D11Buffer*             Renderer::m_ShadowBuffer   = nullptr;
+ID3D11RasterizerState*    Renderer::m_ShadowRS       = nullptr;
+Shader                    Renderer::m_ShadowStaticShader{};
+Shader                    Renderer::m_ShadowSkinnedShader{};
+
 namespace 
 {
 	struct StateCache {
@@ -348,7 +358,84 @@ void Renderer::Init()
 
     SetUV(0, 0, 1, 1);
 
-    //g_ImGuiManager.InitImGui(Application::GetWindow(), m_Device, m_DeviceContext);
+    // シャドウマップ用テクスチャ作成 (2048x2048)
+    {
+        D3D11_TEXTURE2D_DESC sdesc{};
+        sdesc.Width              = 2048;
+        sdesc.Height             = 2048;
+        sdesc.MipLevels          = 1;
+        sdesc.ArraySize          = 1;
+        sdesc.Format             = DXGI_FORMAT_R32_TYPELESS;
+        sdesc.SampleDesc.Count   = 1;
+        sdesc.SampleDesc.Quality = 0;
+        sdesc.Usage              = D3D11_USAGE_DEFAULT;
+        sdesc.BindFlags          = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+
+        hr = m_Device->CreateTexture2D(&sdesc, nullptr, &m_ShadowMapTex);
+        assert(SUCCEEDED(hr) && "ShadowMap Texture2D 作成失敗");
+
+        // 深度ステンシルビュー作成
+        D3D11_DEPTH_STENCIL_VIEW_DESC dsvd{};
+        dsvd.Format        = DXGI_FORMAT_D32_FLOAT;
+        dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+        hr = m_Device->CreateDepthStencilView(m_ShadowMapTex, &dsvd, &m_ShadowDSV);
+        assert(SUCCEEDED(hr) && "ShadowMap DSV 作成失敗");
+
+        // シェーダーリソースビュー作成
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvd{};
+        srvd.Format              = DXGI_FORMAT_R32_FLOAT;
+        srvd.ViewDimension       = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvd.Texture2D.MipLevels = 1;
+        hr = m_Device->CreateShaderResourceView(m_ShadowMapTex, &srvd, &m_ShadowSRV);
+        assert(SUCCEEDED(hr) && "ShadowMap SRV 作成失敗");
+    }
+
+    // シャドウ比較サンプラー作成
+    {
+        D3D11_SAMPLER_DESC sd{};
+        sd.Filter         = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+        sd.AddressU       = D3D11_TEXTURE_ADDRESS_BORDER;
+        sd.AddressV       = D3D11_TEXTURE_ADDRESS_BORDER;
+        sd.AddressW       = D3D11_TEXTURE_ADDRESS_BORDER;
+        sd.BorderColor[0] = 1.0f;  // 範囲外は影なし
+        sd.BorderColor[1] = 1.0f;
+        sd.BorderColor[2] = 1.0f;
+        sd.BorderColor[3] = 1.0f;
+        sd.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+        sd.MinLOD         = 0.0f;
+        sd.MaxLOD         = D3D11_FLOAT32_MAX;
+        hr = m_Device->CreateSamplerState(&sd, &m_ShadowSampler);
+        assert(SUCCEEDED(hr) && "Shadow Sampler 作成失敗");
+    }
+
+    // シャドウ用定数バッファ作成 (b8: LightViewProj)
+    {
+        D3D11_BUFFER_DESC bd{};
+        bd.ByteWidth      = sizeof(Matrix);
+        bd.Usage          = D3D11_USAGE_DEFAULT;
+        bd.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
+        hr = m_Device->CreateBuffer(&bd, nullptr, &m_ShadowBuffer);
+        assert(SUCCEEDED(hr) && "Shadow CBuffer 作成失敗");
+    }
+
+    // シャドウ用ラスタライザ作成 (深度バイアスあり)
+    {
+        D3D11_RASTERIZER_DESC rd{};
+        rd.FillMode              = D3D11_FILL_SOLID;
+        rd.CullMode              = D3D11_CULL_BACK;
+        rd.DepthClipEnable       = TRUE;
+        rd.DepthBias             = 1000;
+        rd.DepthBiasClamp        = 0.0f;
+        rd.SlopeScaledDepthBias  = 0.5f;
+        hr = m_Device->CreateRasterizerState(&rd, &m_ShadowRS);
+        assert(SUCCEEDED(hr) && "Shadow RS 作成失敗");
+    }
+
+    // シャドウ用シェーダー作成
+    m_ShadowStaticShader.Create("shader/shadowVS.hlsl", "shader/shadowPS.hlsl");
+    m_ShadowSkinnedShader.Create("shader/shadowSkinnedVS.hlsl", "shader/shadowPS.hlsl");
+
+    ImGUI_Manager::Init(Application::GetWindow(), m_Device, m_DeviceContext);
 }
 
 
@@ -494,6 +581,120 @@ void Renderer::Uninit()
         m_SamplerState->Release();
         m_SamplerState = nullptr;
     }
+
+    // シャドウマップリソース解放
+    // シャドウマップリソース解放
+    if (m_ShadowMapTex)  { m_ShadowMapTex->Release();  m_ShadowMapTex  = nullptr; }
+    if (m_ShadowDSV)     { m_ShadowDSV->Release();     m_ShadowDSV     = nullptr; }
+    if (m_ShadowSRV)     { m_ShadowSRV->Release();     m_ShadowSRV     = nullptr; }
+    if (m_ShadowSampler) { m_ShadowSampler->Release(); m_ShadowSampler = nullptr; }
+    if (m_ShadowBuffer)  { m_ShadowBuffer->Release();  m_ShadowBuffer  = nullptr; }
+    if (m_ShadowRS)      { m_ShadowRS->Release();      m_ShadowRS      = nullptr; }
+}
+
+// シャドウパス開始
+void Renderer::BeginShadowPass()
+{
+    // ライト視点の行列を計算
+    Vector3 lightDir = Vector3(0.5f, -1.3f, 0.8f);
+    lightDir.Normalize();
+    Vector3 lightEye = -lightDir * 3000.0f;
+    Matrix lightView = Matrix::CreateLookAt(lightEye, Vector3::Zero, Vector3::Up);
+    Matrix lightProj = Matrix::CreateOrthographic(5000.0f, 5000.0f, 1.0f, 6000.0f);
+    Matrix lightViewProj = (lightView * lightProj).Transpose();
+
+    // シャドウ定数バッファ更新 (b8)
+    m_DeviceContext->UpdateSubresource(m_ShadowBuffer, 0, nullptr, &lightViewProj, 0, 0);
+    m_DeviceContext->VSSetConstantBuffers(8, 1, &m_ShadowBuffer);
+
+    // RTV を外してシャドウマップDSVへ切り替え
+    ID3D11RenderTargetView* nullRTV = nullptr;
+    m_DeviceContext->OMSetRenderTargets(1, &nullRTV, m_ShadowDSV);
+    m_DeviceContext->ClearDepthStencilView(m_ShadowDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+    // シャドウ用ビューポート設定
+    D3D11_VIEWPORT vp{};
+    vp.Width    = 2048.0f;
+    vp.Height   = 2048.0f;
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    m_DeviceContext->RSSetViewports(1, &vp);
+
+    // シャドウ用ラスタライザに切り替え
+    m_DeviceContext->RSSetState(m_ShadowRS);
+}
+
+// シャドウパス終了
+void Renderer::EndShadowPass()
+{
+    // 通常のRTV/DSVに戻す
+    m_DeviceContext->OMSetRenderTargets(1, &m_RenderTargetView, m_DepthStencilView);
+
+    // ビューポートを画面サイズに戻す
+    D3D11_VIEWPORT vp{};
+    vp.Width    = static_cast<float>(Application::GetWidth());
+    vp.Height   = static_cast<float>(Application::GetHeight());
+    vp.MinDepth = 0.0f;
+    vp.MaxDepth = 1.0f;
+    m_DeviceContext->RSSetViewports(1, &vp);
+
+    // ラスタライザを通常に戻す
+    D3D11_RASTERIZER_DESC rd{};
+    rd.FillMode        = D3D11_FILL_SOLID;
+    rd.CullMode        = D3D11_CULL_NONE;
+    rd.DepthClipEnable = TRUE;
+    ID3D11RasterizerState* normalRS = nullptr;
+    m_Device->CreateRasterizerState(&rd, &normalRS);
+    m_DeviceContext->RSSetState(normalRS);
+    normalRS->Release();
+
+    // シャドウマップをPSのt1にバインド
+    m_DeviceContext->PSSetShaderResources(1, 1, &m_ShadowSRV);
+    m_DeviceContext->PSSetSamplers(1, 1, &m_ShadowSampler);
+
+    // ステートキャッシュをリセット
+    ResetStateCache();
+}
+
+// スタティックメッシュ用シャドウシェーダーをセット
+void Renderer::SetShadowStaticShader()
+{
+    m_ShadowStaticShader.SetGPU();
+}
+
+// スキニングメッシュ用シャドウシェーダーをセット
+void Renderer::SetShadowSkinnedShader()
+{
+    m_ShadowSkinnedShader.SetGPU();
+}
+
+// スキニングメッシュのシャドウ描画
+void Renderer::DrawShadow(const SkinnedModel& model, const Matrix& world)
+{
+    const auto& mesh  = model.GetMesh();
+    const auto& bones = model.GetFinalMatrices();
+
+    // シャドウシェーダーをセット
+    SetShadowSkinnedShader();
+
+    // ボーン行列を設定
+    SetSkinningMatrices(bones);
+
+    // ワールド行列を設定
+    Matrix w = world.Transpose();
+    m_DeviceContext->UpdateSubresource(m_WorldBuffer, 0, nullptr, &w, 0, 0);
+
+    // 頂点・インデックスバッファ設定
+    UINT stride = sizeof(VERTEX_SKINNED);
+    UINT offset = 0;
+    m_DeviceContext->IASetVertexBuffers(0, 1, mesh.GetVertexBuffer(), &stride, &offset);
+    m_DeviceContext->IASetIndexBuffer(mesh.GetIndexBuffer(), DXGI_FORMAT_R32_UINT, 0);
+
+    // サブセットごとに描画（テクスチャ不要）
+    for (auto& sub : mesh.GetSubsets())
+    {
+        m_DeviceContext->DrawIndexed(sub.IndexNum, sub.IndexBase, 0);
+    }
 }
 
 //=======================================
@@ -523,6 +724,7 @@ void Renderer::Begin()
 //=======================================
 void Renderer::End()
 {
+    ImGUI_Manager::Render();
 	m_SwapChain->Present(0, 0);
 }
 
@@ -805,6 +1007,23 @@ int Renderer::AddSpotLight(const DirectX::SimpleMath::Vector3& pos, const Direct
         }
     }
     return -1;
+}
+
+
+
+
+// ==========================================================
+// ポイントライトの更新
+// ==========================================================
+void Renderer::UpdatePointLight(int id, const DirectX::SimpleMath::Vector3& pos, float range, const DirectX::SimpleMath::Color& color)
+{
+    if (id >= 0 && id < MAX_POINT_LIGHTS)
+    {
+        m_LightData.Lights[id].Position   = Vector4(pos.x, pos.y, pos.z, range);
+        m_LightData.Lights[id].Color      = color;
+        m_LightData.Lights[id].Color.w    = 1.0f; // point light
+        PushLightBuffer();
+    }
 }
 
 

@@ -3,7 +3,7 @@
 #include "StaticMesh.h"
 #include "utility.h"
 #include "Game.h"
-#include "Collision.h"
+#include "DebugManager.h"
 
 using namespace std;
 using namespace DirectX::SimpleMath;
@@ -79,6 +79,7 @@ void Pole::Init()
 void Pole::Update(float deltaTime)
 {
 	collider.center = m_Position;
+	collider.rotation = DirectX::SimpleMath::Quaternion::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 }
 
 //=======================================
@@ -117,10 +118,10 @@ void Pole::Draw()
 			m_subsets[i].VertexBase); // 頂点バッファの最初から使用
 	}
 
-#ifdef _DEBUG
-	//Matrix colliderWorldMatrix = r * t;
-	//collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), worldmtx);
-#endif
+	if (DebugManager::GetInstance().ShouldShowColliders())
+	{
+		collider.DrawDebugCollider(Game::GetInstance().GetMainCamera());
+	}
 }
 
 //=======================================

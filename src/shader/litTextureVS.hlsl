@@ -1,27 +1,28 @@
-// ==========================================
-// ’Êíƒ‚ƒfƒ‹—p ’¸“_ƒVƒF[ƒ_[
-// ==========================================
+// é€šå¸¸ãƒ¢ãƒ‡ãƒ«ç”¨ é ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼
 #include "common.hlsl"
 
 PS_IN vs_main(in VS_IN input)
 {
     PS_IN output;
 
-    // À•W•ÏŠ·
+    // åº§æ¨™å¤‰æ›
     matrix wvp;
     wvp = mul(World, View);
     wvp = mul(wvp, Projection);
     output.pos = mul(float4(input.pos, 1.0f), wvp);
-    
-    // ƒ[ƒ‹ƒhÀ•W
+
+    // ãƒ¯ãƒ¼ãƒ«ãƒ‰åº§æ¨™
     output.worldPos = mul(float4(input.pos, 1.0f), World);
-    
+
     float3 N = mul(input.nrm, (float3x3) WorldInverseTranspose);
     output.normal = normalize(N);
-    
-    // ƒeƒNƒXƒ`ƒƒÀ•W
+
+    // ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—åº§æ¨™
+    output.shadowCoord = mul(output.worldPos, LightViewProj);
+
+    // ãƒ†ã‚¯ã‚¹ãƒãƒ£åº§æ¨™
     output.col = input.col;
     output.tex = input.tex;
-    
+
     return output;
 }

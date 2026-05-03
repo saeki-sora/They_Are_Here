@@ -20,6 +20,7 @@ public:
 	virtual void Update(float deltaTime) = 0;
 	virtual void Draw() = 0;
 	virtual void DrawUI() {}
+	virtual void DrawOverlayUI() {}  // エフェクトより上に描画するUI
 
 	// 状態管理
 	virtual void OnPause() {}
@@ -43,6 +44,10 @@ protected:
 	std::vector<std::shared_ptr<Object>> m_SceneObjects;
 	std::atomic<float> m_LoadProgress{ 0.0f };
 	bool m_IsInitialized = false;
+	bool m_IsGamePaused  = false;
+
+	void SetGamePaused(bool paused) { m_IsGamePaused = paused; }
+	bool IsGamePaused() const       { return m_IsGamePaused; }
 
 public:
 	virtual ~SceneBase();
@@ -58,6 +63,8 @@ public:
 	void Update(float deltaTime) final;
 	void Draw() final;
 	void DrawUI() final;
+	void DrawOverlayUI() final; // エフェクトより上に描画するUI
+	void DrawShadow();          // シャドウマップパス用
 
 	float GetLoadProgress() const override { return m_LoadProgress; }
 
@@ -116,4 +123,5 @@ protected:
 	virtual void OnUpdate(float deltaTime) {}
 	virtual void OnDraw() {}
 	virtual void OnDrawUI() {}
+	virtual void OnDrawOverlayUI() {}  // エフェクトより上のUI
 };

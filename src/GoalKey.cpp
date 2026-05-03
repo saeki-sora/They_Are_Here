@@ -1,10 +1,13 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "GoalKey.h"
 #include "SceneManager.h"
 #include "Player.h"
 #include "Enemy.h"
 #include "Renderer.h"
 #include "StaticMesh.h"
+#include "DebugManager.h"
+#include "Game.h"
+#include "SoundManager.h"
 
 using namespace DirectX;
 using namespace DirectX::SimpleMath;
@@ -17,17 +20,16 @@ GoalKey::GoalKey(const Vector3& pos, const Vector3& size)
 GoalKey::~GoalKey() {}
 
 
-
 void GoalKey::Init()
 {
-    // メチE��ュ読み込み
+    //メッシュとテクスチャの読み込み
     StaticMesh staticmesh;
 
-    // 3DモチE��チE�Eタ
-    std::u8string modelFile = u8"assets/model/player/Player.fbx";
+    // 3Dモデルファイル
+    std::u8string modelFile = u8"assets/model/gole_key/Goal_Key.fbx";
 
-    // チE��スチャチE��レクトリ
-    std::string texDirectory = "assets/texture/terain.png";
+    // テクスチャディレクトリ
+    std::string texDirectory = "assets/model/gole_key";
 
     // Meshを読み込む
     std::string tmpStr1(reinterpret_cast<const char*>(modelFile.c_str()), modelFile.size());
@@ -35,37 +37,35 @@ void GoalKey::Init()
 
     m_MeshRenderer.Init(staticmesh);
 
-    //当たり判定用のサイズを設宁E
+    //当たり判定用のサイズを取得
     collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
 
-    // シェーダオブジェクト生戁E
+    // シェーダオブジェクト
     m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
 
-    // サブセチE��惁E��取征E
+    // サブセット情報の取得
     m_subsets = staticmesh.GetSubsets();
 
-    // チE��スチャ惁E��取征E
+    // テクスチャ情報の取得
     m_Textures = staticmesh.GetTextures();
 
-    // マテリアル惁E��取征E
+    // マテリアル情報の取得
     std::vector<MATERIAL> materials = staticmesh.GetMaterials();
 
-    // マテリアル数刁E��ーチE
+    // マテリアル数分ループ
     for (int i = 0; i < materials.size(); ++i)
     {
-        // マテリアルオブジェクト生戁E
+        // マテリアルオブジェクト生成
         std::unique_ptr<Material> m = std::make_unique<Material>();
 
-        // マテリアル惁E��をセチE��
+        // マテリアル情報をセット
         m->Create(materials[i]);
 
-        // マテリアルオブジェクトを配�Eに追加
+        // マテリアルオブジェクトを配列に追加
         m_Materiales.push_back(std::move(m));
     }
 
-
-    // プレイヤーのキャッシュはUpdate内で遅延取得する
-    // (Init時点ではSceneManagerのcurrentSceneが未設定のため)
+	m_Rotation.x = XMConvertToRadians(90.0f); // X軸に90度回転させて立たせる
 }
 
 
@@ -81,10 +81,11 @@ void GoalKey::Update(float deltaTime)
     // ターゲットへの追従
     FollowTarget(deltaTime);
 
-    // コライダー位置更新
+    // コライダー位置と回転更新
     collider.center = m_Position;
+    collider.rotation = DirectX::SimpleMath::Quaternion::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 
-    // プレイヤーとの当たり判定（まだ取得してぁE��ぁE��合�Eみ�E�E
+    // プレイヤーとの当たり判定（まだ取得していない場合のみ）
     if (!m_IsObtained)
     {
         CheckCollisionWithPlayer();
@@ -95,23 +96,23 @@ void GoalKey::Update(float deltaTime)
 
 void GoalKey::Draw()
 {
-    // SRT惁E��作�E
+    // SRT行列の作成
     Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
     Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
     Matrix s = Matrix::CreateScale(m_Scale.x, m_Scale.y, m_Scale.z);
 
     Matrix worldmtx;
     worldmtx = s * r * t;
-    Renderer::SetWorldMatrix(&worldmtx); // GPUにセチE��
+    Renderer::SetWorldMatrix(&worldmtx); // GPUにセット
     m_Shader.SetGPU();
 
-    // インチE��クスバッファ・頂点バッファをセチE��
+    // インデックスバッファ・頂点バッファをセット
     m_MeshRenderer.BeforeDraw();
 
-    //マテリアル数刁E��ーチE
+    // マテリアル数分ループ
     for (int i = 0; i < m_subsets.size(); ++i)
     {
-        // マテリアルをセチE��
+        // マテリアルをセット
         m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
 
         if (m_Materiales[m_subsets[i].MaterialIdx]->isTextureEnable())
@@ -120,16 +121,15 @@ void GoalKey::Draw()
         }
 
         m_MeshRenderer.DrawSubset(
-            m_subsets[i].IndexNum, // 描画するインチE��クス数
-            m_subsets[i].IndexBase, // 最初�EインチE��クスバッファの位置	
+            m_subsets[i].IndexNum, // 描画するインデックス数
+            m_subsets[i].IndexBase, // 最初のインデックスバッファの位置	
             m_subsets[i].VertexBase); // 頂点バッファの最初から使用
     }
 
-    //#ifdef _DEBUG
-    //	Matrix colliderWorldMatrix = r * t;
-    //	// スケールを含めなぁE���Eを渡して描画します、E
-    //	collider.DrawDebugCollider(Game::GetInstance().GetMainCamera(), colliderWorldMatrix);
-    //#endif
+    if (DebugManager::GetInstance().ShouldShowColliders()) { collider.DrawDebugCollider(Game::GetInstance().GetMainCamera()); }
+
+    //	// スケールを含めない行列を渡して描画します。
+
 }
 
 
@@ -155,23 +155,18 @@ void GoalKey::FollowTarget(float deltaTime)
 {
     if (auto target = m_Target.lock())
     {
-        // ターゲチE��の位置と回転を取征E
+        // ターゲットの位置と回転を取得
         Vector3 targetPos = target->GetPosition();
         Vector3 targetRot = Vector3::Zero;
 
-        // 対象がPlayerかEnemyかで回転の取得方法を刁E��めE
-        // (ColliderObjectにGetRotationがあれ�E共通化できますが、今回はキャストで対忁E
-        if (auto player = std::dynamic_pointer_cast<Player>(target))
-        {
-            targetRot = player->GetRotation();
-        }
-        else if (auto enemy = std::dynamic_pointer_cast<Enemy>(target))
+		// ターゲットがEnemyなら回転を取得（Playerは回転を考慮しない）
+        if (auto enemy = std::dynamic_pointer_cast<Enemy>(target))
         {
             targetRot = enemy->GetRotation();
         }
 
-        // --- 位置計箁E 背中に配置 ---
-        // Y軸回転から後ろ方向�Eクトルを作�E
+        // --- 位置計算 背中に配置 ---
+        // Y軸回転から後ろ方向ベクトルを作成
         Vector3 forward;
         forward.x = std::sin(targetRot.y);
         forward.y = 0.0f;
@@ -180,18 +175,20 @@ void GoalKey::FollowTarget(float deltaTime)
 
         Vector3 backward = -forward;
 
-        // 目標位置 = ターゲチE��位置 + (後ろ方吁E* 距離) + 高さ調整
+        // 目標位置 = ターゲット位置 + (後ろ方向 * 距離) + 高さ調整
         Vector3 desiredPos = targetPos + (backward * FOLLOW_DISTANCE);
         desiredPos.y = targetPos.y + HEIGHT_OFFSET;
 
-        // ふわ�Eわさせる演�E�E�オプション�E�E
+        // ふわふわさせる演出
          //desiredPos.y += std::sin(Game::GetInstance().GetTotalTime() * 2.0f) * 5.0f;
 
-        // 現在位置から目標位置へ滑らかに移勁E(Lerp)
+
+        // 現在位置から目標位置へ滑らかに移動(Lerp)
         m_Position = Vector3::Lerp(m_Position, desiredPos, LERP_FACTOR);
 
-        // 回転もターゲチE��に合わせる�E�常に背中が見えるよぁE���E�E
+        // 回転もターゲットに合わせる（常に背中が見えるように）
         m_Rotation = targetRot;
+        m_Rotation.x = XMConvertToRadians(90.0f); // X軸の立ち姿勢を維持
     }
 }
 
@@ -203,7 +200,8 @@ void GoalKey::CheckCollisionWithPlayer()
         {
             m_IsObtained = true;
             player->SetHasKey(true);
-			this->Destroy();
+            SoundManager::GetInstance().PlaySE("SE_KeyPickup");
+            this->Destroy();
             std::cout << "Key Obtained! Follow Target Changed to Player." << std::endl;
         }
     }

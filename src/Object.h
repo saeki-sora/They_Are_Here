@@ -37,6 +37,7 @@ public:
 	virtual void Init();
 	virtual void Update(float deltaTime);
 	virtual void Draw();
+	virtual void DrawShadow() {}  // シャドウマップ描画（デフォルトは何もしない）
 	virtual void Uninit();
 
 	//セッター

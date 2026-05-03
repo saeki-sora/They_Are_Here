@@ -2,7 +2,7 @@
 #include "SceneBase.h"
 
 // ================================================================================
-// SceneBaseｼﾂﾁ・
+// シーンの基本的な実装
 // ================================================================================
 
 SceneBase::~SceneBase() 
@@ -10,52 +10,62 @@ SceneBase::~SceneBase()
     ClearSceneObjects();
 }
 
+// デフォルトのライフサイクル実装
 void SceneBase::OnLoad() 
 {
-    // ･ﾇ･ﾕ･ｩ･・ﾈｼﾂﾁ・ ﾇﾉﾀｸ･ｯ･鬣ｹ､ﾇ･ｪ｡ｼ･ﾐ｡ｼ･鬣､･ﾉ
+    
     m_LoadProgress = 1.0f;
 }
 
+
+// 派生クラスで必要に応じてオーバーライド
 void SceneBase::OnInit() 
 {
-    // ･ﾇ･ﾕ･ｩ･・ﾈｼﾂﾁ・ ﾇﾉﾀｸ･ｯ･鬣ｹ､ﾇ･ｪ｡ｼ･ﾐ｡ｼ･鬣､･ﾉ
+    
     m_IsInitialized = true;
 }
 
+
+// 派生クラスで必要に応じてオーバーライド
 void SceneBase::OnActivate() 
 {
-    // ･ﾇ･ﾕ･ｩ･・ﾈｼﾂﾁ・ ﾇﾉﾀｸ･ｯ･鬣ｹ､ﾇ･ｪ｡ｼ･ﾐ｡ｼ･鬣､･ﾉ
+    
 }
 
+
+// フレームごとの更新処理
 void SceneBase::Update(float deltaTime)
 {
-    OnUpdate(deltaTime);//ﾇﾉﾀｸ･ｯ･鬣ｹ､ﾎｹｹｿｷ
+    OnUpdate(deltaTime);
 
-    // ､ｳ､ﾎ･ｷ｡ｼ･ｬｽ・ｭ､ｹ､・ｪ･ﾖ･ｸ･ｧ･ｯ･ﾈ､ｹｿｷ､ｹ､・
+	// オブジェクトの更新と破棄処理
     for (auto it = m_SceneObjects.begin(); it != m_SceneObjects.end(); )
     {
         auto& obj = *it;
 
-        if (!obj->IsPendingDestroy())
+        if (obj->IsPendingDestroy())
         {
-            obj->Update(deltaTime);
-            ++it;
+            obj->Uninit();
+            it = m_SceneObjects.erase(it);
         }
         else
         {
-            // ﾇﾋｴ･ﾕ･鬣ｰ､ｬﾎｩ､ﾃ､ﾆ､､､ｿ､鮨ｪﾎｻｽ靉､ｷ､ﾆｺ・・
-            obj->Uninit();
-            it = m_SceneObjects.erase(it);
+            if (!m_IsGamePaused) // ポーズ中はオブジェクト更新をスキップ
+            {
+                obj->Update(deltaTime);
+            }
+            ++it;
         }
     }
 }
 
+// 描画処理
 void SceneBase::Draw()
 {
 
-    OnDraw();//ﾇﾉﾀｸ･ｯ･鬣ｹ､ﾎﾉﾁｲ・
+    OnDraw();
 
-    // ､ｳ､ﾎ･ｷ｡ｼ･ｬｽ・ｭ､ｹ､・D･ｪ･ﾖ･ｸ･ｧ･ｯ･ﾈ､ﾁｲ隍ｹ､・
+    
     for (auto& obj : m_SceneObjects)
     {
         if (obj->Is3D())
@@ -65,11 +75,11 @@ void SceneBase::Draw()
     }
 }
 
+// UI描画処理
 void SceneBase::DrawUI()
 {
     OnDrawUI();
 
-    // ､ｳ､ﾎ･ｷ｡ｼ･ｬｽ・ｭ､ｹ､・D･ｪ･ﾖ･ｸ･ｧ･ｯ･ﾈ(UI)､ﾁｲ隍ｹ､・
     for (auto& obj : m_SceneObjects)
     {
         if (!obj->Is3D())
@@ -79,16 +89,43 @@ void SceneBase::DrawUI()
     }
 }
 
-void SceneBase::OnDeactivate() {
-    // ･ﾇ･ﾕ･ｩ･・ﾈｼﾂﾁ・ ﾇﾉﾀｸ･ｯ･鬣ｹ､ﾇ･ｪ｡ｼ･ﾐ｡ｼ･鬣､･ﾉ
+
+// エフェクトより上に描画するUI
+void SceneBase::DrawOverlayUI()
+{
+    OnDrawOverlayUI();
 }
 
+
+// シャドウマップ描画処理
+void SceneBase::DrawShadow()
+{
+    // 3Dオブジェクトのシャドウ描画
+    for (auto& obj : m_SceneObjects)
+    {
+        if (obj->Is3D() && !obj->IsPendingDestroy())
+        {
+            obj->DrawShadow();
+        }
+    }
+}
+
+
+// 派生クラスで必要に応じてオーバーライド
+void SceneBase::OnDeactivate() {
+    
+}
+
+
+// 派生クラスで必要に応じてオーバーライド
 void SceneBase::OnUnload()
 {
     ClearSceneObjects();
     m_IsInitialized = false;
 }
 
+
+// オブジェクトを削除する
 void SceneBase::DeleteObject(std::weak_ptr<Object> weak_pt)
 {
     if (auto shared_pt = weak_pt.lock())
@@ -102,6 +139,8 @@ void SceneBase::DeleteObject(std::weak_ptr<Object> weak_pt)
     }
 }
 
+
+// シーン内のすべてのオブジェクトを削除する
 void SceneBase::ClearSceneObjects() 
 {
     for (auto& obj : m_SceneObjects) {

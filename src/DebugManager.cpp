@@ -10,7 +10,9 @@ DebugManager::DebugManager()
     , m_NoClipMode(false)
     , m_ShowEnemyPath(false)
     , m_ShowEnemyVision(false)
+    , m_ShowEnemyWhisker(false)
     , m_InvincibleMode(false)
+    , m_ShowLampLights(false)
     , m_KeyComboTimer(0.0f)
     , m_ComboStep(0)
 {
@@ -85,6 +87,18 @@ void DebugManager::Update(float deltaTime)
         {
             ToggleInvincibleMode();
         }
+
+        // F6: 敵のウィスカー表示切り替え
+        if (Input::GetKeyTrigger(VK_F6))
+        {
+            ToggleEnemyWhiskerDisplay();
+        }
+
+        // F7: ランプ点光源の位置表示切り替え
+        if (Input::GetKeyTrigger(VK_F7))
+        {
+            ToggleLampLightsDisplay();
+        }
     }
 }
 
@@ -102,6 +116,8 @@ void DebugManager::ToggleDebugMode()
         std::cout << "F3: Toggle Enemy Path Display\n";
         std::cout << "F4: Toggle Enemy Vision Display\n";
         std::cout << "F5: Toggle Invincible Mode\n";
+        std::cout << "F6: Toggle Enemy Whisker Display\n";
+        std::cout << "F7: Toggle Lamp Light Display\n";
         std::cout << "========================================\n";
     }
     else
@@ -112,7 +128,9 @@ void DebugManager::ToggleDebugMode()
         m_NoClipMode = false;
         m_ShowEnemyPath = false;
         m_ShowEnemyVision = false;
+        m_ShowEnemyWhisker = false;
         m_InvincibleMode = false;
+        m_ShowLampLights = false;
     }
 }
 
@@ -144,4 +162,16 @@ void DebugManager::ToggleInvincibleMode()
 {
     m_InvincibleMode = !m_InvincibleMode;
     std::cout << "Invincible Mode: " << (m_InvincibleMode ? "ON" : "OFF") << "\n";
+}
+
+void DebugManager::ToggleEnemyWhiskerDisplay()
+{
+    m_ShowEnemyWhisker = !m_ShowEnemyWhisker;
+    std::cout << "Enemy Whisker Display: " << (m_ShowEnemyWhisker ? "ON" : "OFF") << "\n";
+}
+
+void DebugManager::ToggleLampLightsDisplay()
+{
+    m_ShowLampLights = !m_ShowLampLights;
+    std::cout << "Lamp Light Display: " << (m_ShowLampLights ? "ON" : "OFF") << "\n";
 }

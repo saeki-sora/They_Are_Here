@@ -3,6 +3,7 @@
 #include "EnemyState_StalkerChase.h" 
 #include "Game.h"
 #include "Player.h"
+#include "MakeMap.h"
 
 void StalkerEnemy::Init()
 {
@@ -13,9 +14,12 @@ void StalkerEnemy::Init()
     m_ChaseSpeed = 20.0f;   // 遅い
     m_SearchSpeed = 20.0f;  // 探索も遅い
     m_CurrentMaxSpeed = m_SearchSpeed;
-
+    m_ArriveRadius = 10.0f;
     // ライトを青色に設定
     m_SpotLightColor = DirectX::SimpleMath::Color(0.0f, 0.0f, 1.0f, 1.0f);
+
+    // 旋回速度を遅くする（デフォルト320度 -> 120度）
+    m_MaxAngVel = DirectX::XMConvertToRadians(120.0f);
 
     m_IsLockedOn = false;
 }
@@ -27,7 +31,7 @@ void StalkerEnemy::Update(float deltaTime)
     {
         if (CanSeePlayer())
         {
-            // 見つけた！ロックオン完了
+            // 見つけた！
             m_IsLockedOn = true;
 
 			// 追跡状態に変更

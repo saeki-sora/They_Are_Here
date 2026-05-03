@@ -6,20 +6,20 @@
 
 using namespace DirectX::SimpleMath;
 
-//繧ｷ繝ｳ繧ｰ繝ｫ繝医Φ繝代ち繝ｼ繝ｳ縺ｧ繧ｲ繝ｼ繝繧ｯ繝ｩ繧ｹ繧貞ｮ夂ｾｩ
+
 class Game
 {
 private:
-	Game(); // 繧ｳ繝ｳ繧ｹ繝医Λ繧ｯ繧ｿ
-	~Game(); // 繝・せ繝医Λ繧ｯ繧ｿ
+	Game(); // コンストラクタ
+	~Game(); // デストラクタ
 
-	std::unique_ptr<Input> m_Input;  // 蜈･蜉帛・逅・
-	std::unique_ptr<Camera> m_MainCamera; // 繧ｫ繝｡繝ｩ
+	std::unique_ptr<Input> m_Input;  // 入力クラス
+	std::unique_ptr<Camera> m_MainCamera; // カメラ
 
 public:
 	static Game& GetInstance();
 
-	// 繧ｳ繝斐・遖∵ｭ｢
+	// インスタンスを取得
 	Game(const Game&) = delete;
 	Game& operator=(const Game&) = delete;
 
@@ -28,5 +28,5 @@ public:
 	void Draw();
 	void Uninit();
 
-	Camera& GetMainCamera() { return *m_MainCamera; } // 繧ｫ繝｡繝ｩ蜿門ｾ・
+	Camera& GetMainCamera() { return *m_MainCamera; } // カメラを取得
 };

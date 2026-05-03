@@ -218,7 +218,18 @@ void SceneManager::DrawUI()
 	}
 }
 
+void SceneManager::DrawOverlayUI()
+{
+	Game::GetInstance().GetMainCamera().SetCamera(1); // 2Dカメラに設定
 
+	auto currentIt = find_or_end(m_Scenes, m_CurrentSceneId);
+	if (currentIt != m_Scenes.end() &&
+		currentIt->second.scene &&
+		currentIt->second.state == SceneState::Active)
+	{
+		currentIt->second.scene->DrawOverlayUI();
+	}
+}
 
 
 void SceneManager::DrawTransition()
@@ -226,6 +237,23 @@ void SceneManager::DrawTransition()
 	// シーン遷移中であれば、トランジションエフェクトを描画
 	if (m_IsTransitioning && m_Transition) {
 		m_Transition->Draw();
+	}
+}
+
+void SceneManager::DrawShadow()
+{
+	Game::GetInstance().GetMainCamera().SetCamera(0); // 3Dカメラに設定
+
+	auto currentIt = find_or_end(m_Scenes, m_CurrentSceneId);
+	if (currentIt != m_Scenes.end() &&
+		currentIt->second.scene &&
+		currentIt->second.state == SceneState::Active)
+	{
+		// SceneBase にキャストして DrawShadow を呼ぶ
+		if (auto* base = dynamic_cast<SceneBase*>(currentIt->second.scene.get()))
+		{
+			base->DrawShadow();
+		}
 	}
 }
 
@@ -310,7 +338,6 @@ void SceneManager::UpdateTransition(float deltaTime)
 
 	case SceneTransition::Phase::Loading:
 	{
-		// このフェーズは1フレームで完了します
 		if (!m_NextSceneId) break;
 		auto factoryIt = m_SceneFactories.find(*m_NextSceneId);
 		if (factoryIt != m_SceneFactories.end())
@@ -318,15 +345,20 @@ void SceneManager::UpdateTransition(float deltaTime)
 			// 次のシーンを準備
 			auto& nextInfo = m_Scenes[*m_NextSceneId];
 
-			if (!nextInfo.scene)//シーンが未生成なら生成してロード
+			if (!nextInfo.scene)//シーンが未生成なら同期ロード
 			{
 				nextInfo.scene = factoryIt->second();
 				nextInfo.scene->OnLoad();
 				nextInfo.scene->OnInit();
 			}
-			else if (nextInfo.state == SceneState::Ready) 
+			else if (nextInfo.state == SceneState::Loading)
 			{
-				nextInfo.scene->OnInit(); //インスタンス生成済みかつ、プリロード済みならOnInitを呼ぶ
+				// バックグラウンドスレッドがまだ実行中 → このフレームは待機、次フレームに持ち越す
+				break;
+			}
+			else if (nextInfo.state == SceneState::Ready)
+			{
+				nextInfo.scene->OnInit(); //プリロード完了済みならOnInitを呼ぶ
 			}
 
 			// 次のシーンをアクティブ化し、現在のシーンとして設定

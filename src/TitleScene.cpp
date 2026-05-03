@@ -1,11 +1,12 @@
 ﻿#include "pch.h"
 #include "TitleScene.h"
 #include "Game.h"
-#include"VisualObject.h"
+#include "VisualObject.h"
 #include "EffectManager.h"
 #include "FadeEffect.h"
-#include"SceneManager.h"
-#include "Stage1Scene.h"
+#include "SceneManager.h"
+#include "DifficultySelectScene.h"
+#include "DifficultyManager.h" 
 #include "FadeTransition.h"
 #include "TitleEnemy.h"
 #include "SkyDome.h"
@@ -91,8 +92,8 @@ void TitleScene::OnInit()
 	m_Duration = 6.0f; // 6秒で移動
 
 
-	// Stage1Sceneのプリロードをバックグラウンドスレッドで開始
-	SceneManager::GetInstance().PreloadScene<Stage1Scene>();
+	// 全難易度のマッププランをバックグラウンドで並列生成する。
+	DifficultyManager::GetInstance().PreloadAll();
 
 	//煤エフェクト開始
 	m_SootEffect = EffectManager::GetInstance().StartEffect<SootRainEffect>(
@@ -209,11 +210,11 @@ void TitleScene::BuildMenuItems()
 				enemy->StartScareSequence(camPos);
 			}
 
-			//遷移開始
-			SceneManager::GetInstance().ChangeScene<Stage1Scene>(
+			//遷移開始 → 難易度選択画面へ
+			SceneManager::GetInstance().ChangeScene<DifficultySelectScene>(
 				std::make_unique<FadeTransition>(4.0f));
 		}
-		});
+	});
 
 	// ゲーム終了
 	m_MenuItems.push_back(MenuItem{
@@ -228,7 +229,7 @@ void TitleScene::BuildMenuItems()
 				PostMessage(hWnd, WM_DESTROY, 0, 0);
 			}
 		}
-		});
+	});
 
 	//タイトルロゴ
 	m_MenuItems.push_back(MenuItem{
@@ -237,6 +238,15 @@ void TitleScene::BuildMenuItems()
 		Vector3(900.0f, 500.0f, 1.0f),
 		nullptr,// ロゴは選択不可
 		false
+	});
+
+	//スペースキーで決定の説明
+	m_MenuItems.push_back(MenuItem{
+	"assets/texture/SpaseKey_UI.png",
+	Vector3(650.0f, 50.0f, 0.0f),
+	Vector3(500.0f, 300.0f, 1.0f),
+	nullptr,//選択不可
+	false
 		});
 
 }

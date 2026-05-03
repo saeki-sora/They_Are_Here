@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Pathfinder.h"
 #include "MakeMap.h"
 
@@ -34,24 +34,26 @@ std::vector<GridCoord> Pathfinder::FindPath(const MakeMap* map,
 		return { start };
 	}
 
-	// MakeMapを介して歩行可能性をテストするラムダを定義
+	//歩けるかどうかをテストするラムダ
 	auto isWalkable = [map](int x, int y) -> bool
 		{
 			return map->IsWalkable(x, y);
 		};
 
-	const int maxX = MAP::Config::MaxX;
-	const int maxY = MAP::Config::MaxY;
-
+	// マップサイズはランタイムで難易度によって変わるため、MakeMap から取得する
+	const int maxX = map->GetSizeX();
+	const int maxY = map->GetSizeY();
 
 	// グリッド座標を一意のキーに変換するラムダ
 	auto flatten = [maxY](int x, int y) { return x * maxY + y; };
 	std::unordered_map<int, Node> cameFrom;
 
+
 	std::priority_queue<Node, std::vector<Node>, NodeCompare> open;
 	Node startNode{ start, 0.0f, Heuristic(start, goal), { -1, -1 } };
 	cameFrom.emplace(flatten(start.x, start.y), startNode);
 	open.push(startNode);
+
 
 	// 4方向接続の隣接オフセット
 	static const GridCoord neighbours[4] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
@@ -99,6 +101,7 @@ std::vector<GridCoord> Pathfinder::FindPath(const MakeMap* map,
 				continue;
 			}
 
+			// より良いパスが見つかった場合、ノードを更新してオープンリストに追加
 			Node neighbourNode;
 			neighbourNode.coord = { nx, ny };
 			neighbourNode.gCost = tentativeG;
@@ -134,9 +137,9 @@ std::vector<GridCoord> Pathfinder::FindPathWithWeights(const MakeMap* map,
 			return map->IsWalkable(x, y);
 		};
 
-	const int maxX = MAP::Config::MaxX;
-	const int maxY = MAP::Config::MaxY;
-
+	// マップサイズはランタイムで難易度によって変わるため、MakeMap から取得する
+	const int maxX = map->GetSizeX();
+	const int maxY = map->GetSizeY();
 
 	// グリッド座標を一意のキーに変換するラムダ
 	auto flatten = [maxY](int x, int y) { return x * maxY + y; };
@@ -219,44 +222,48 @@ std::vector<GridCoord> Pathfinder::FindPathWithWeights(const MakeMap* map,
 
 
 
-
+// グリッド座標をワールド座標へ変換
+// マップ中心は難易度によって変わるため、MakeMap から GetSizeX/Y() で取得する
 Vector3 Pathfinder::GridToWorld(const MakeMap* map, const GridCoord& coord)
 {
-	
-	const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
-	const float MAP_CENTER_X = MAP::Config::MaxX / 2.0f * MAP::Config::BLOCK_SIZE;
-	const float MAP_CENTER_Y = MAP::Config::MaxY / 2.0f * MAP::Config::BLOCK_SIZE;
+	const float HALF_BLOCK   = MAP::Config::BLOCK_SIZE / 2.0f;
+	const float MAP_CENTER_X = map->GetSizeX() / 2.0f * MAP::Config::BLOCK_SIZE;
+	const float MAP_CENTER_Y = map->GetSizeY() / 2.0f * MAP::Config::BLOCK_SIZE;
 
-	float worldX = 0.0f + (HALF_BLOCK + MAP_CENTER_X - (MAP::Config::BLOCK_SIZE * coord.x));
-	float worldY = 0.0f - (MAP::Config::BLOCK_SIZE / 2.0f);
-	float worldZ = 0.0f - (HALF_BLOCK - MAP_CENTER_Y + (MAP::Config::BLOCK_SIZE * coord.y));
+	float worldX = HALF_BLOCK + MAP_CENTER_X - MAP::Config::BLOCK_SIZE * coord.x;
+	float worldZ = -(HALF_BLOCK - MAP_CENTER_Y + MAP::Config::BLOCK_SIZE * coord.y);
 
 	return Vector3(worldX, 0.0f, worldZ);
 }
 
+
+
+// ワールド座標をグリッド座標へ変換
+// クランプ上限も難易度に応じたサイズを使う
 GridCoord Pathfinder::WorldToGrid(const MakeMap* map, const Vector3& pos)
 {
-	
-	const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
-	const float MAP_CENTER_X = MAP::Config::MaxX / 2.0f * MAP::Config::BLOCK_SIZE;
-	const float MAP_CENTER_Y = MAP::Config::MaxY / 2.0f * MAP::Config::BLOCK_SIZE;
+	const float HALF_BLOCK   = MAP::Config::BLOCK_SIZE / 2.0f;
+	const float MAP_CENTER_X = map->GetSizeX() / 2.0f * MAP::Config::BLOCK_SIZE;
+	const float MAP_CENTER_Y = map->GetSizeY() / 2.0f * MAP::Config::BLOCK_SIZE;
 
 	// X座標の逆算
-	float gridX_f = ((HALF_BLOCK + MAP_CENTER_X) - pos.x) / MAP::Config::BLOCK_SIZE;
+	float gridX_f = (HALF_BLOCK + MAP_CENTER_X - pos.x) / MAP::Config::BLOCK_SIZE;
 
 	// Z座標の逆算
-	float gridY_f = ((-pos.z - HALF_BLOCK + MAP_CENTER_Y)) / MAP::Config::BLOCK_SIZE;
+	float gridY_f = (-pos.z - HALF_BLOCK + MAP_CENTER_Y) / MAP::Config::BLOCK_SIZE;
 
 	int x = static_cast<int>(std::round(gridX_f));
 	int y = static_cast<int>(std::round(gridY_f));
 
 	// 境界内にクランプ
-	x = std::clamp(x, 0, static_cast<int>(MAP::Config::MaxX) - 1);
-	y = std::clamp(y, 0, static_cast<int>(MAP::Config::MaxY) - 1);
+	x = std::clamp(x, 0, map->GetSizeX() - 1);
+	y = std::clamp(y, 0, map->GetSizeY() - 1);
 
 	return { x, y };
 }
 
+
+// 経路を滑らかにする関数。直接線分が歩行可能な限り、可能な限り先を見ようと試みる。
 std::vector<Vector3> Pathfinder::SmoothPath(const std::vector<Vector3>& path,
 	const std::function<bool(const Vector3&, const Vector3&)>& isWalkable)
 {
@@ -280,6 +287,7 @@ std::vector<Vector3> Pathfinder::SmoothPath(const std::vector<Vector3>& path,
 			}
 			else
 			{
+				std::cout << "[SmoothPath] next=" << next << " で失敗してbreak。current=" << current << "\n";
 				break;
 			}
 		}
