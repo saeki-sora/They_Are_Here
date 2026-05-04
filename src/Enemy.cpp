@@ -512,6 +512,12 @@ bool Enemy::ComputePathTo(const Vector3& target)
 		worldPath.push_back(Pathfinder::GridToWorld(m_Map, cell));
 	}
 
+	// 最終ウェイポイントをグリッドセル中心ではなく実際のターゲット位置で上書き
+	if (!worldPath.empty())
+	{
+		worldPath.back() = target;
+	}
+
 	// パスの後処理（スムージング、始点スキップ、コーナーカット）
 	ProcessPath(worldPath);
 
@@ -819,7 +825,9 @@ void Enemy::FollowPath(float deltaTime)
 	toHead.y = 0.0f;
 	float distHead = toHead.Length();
 
-	if (distHead <= m_ArriveRadius)
+	// 追跡中の最終ウェイポイントはOBBが必ず重なる距離まで詰める
+	float useRadius = (m_IsChasing && m_Waypoints.size() == 1) ? 2.0f : m_ArriveRadius;
+	if (distHead <= useRadius)
 	{
 		//std::cout << "【移動】ウェイポイント到達！ 次へ進みます。\n";
 		m_Waypoints.pop_front();

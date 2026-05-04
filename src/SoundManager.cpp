@@ -34,13 +34,26 @@ void SoundManager::Uninit()
 }
 
 
-void SoundManager::Update()
+void SoundManager::Update(float deltaTime)
 {
     if (m_audioEngine)
     {
-        if (!m_audioEngine->Update()) 
+        if (!m_audioEngine->Update())
         {
 			// オーディオデバイスロスト時の復帰処理をここに追加可能
+        }
+    }
+
+    // BGMフェードアウト処理
+    if (m_IsFadingOut && m_currentBGM)
+    {
+        m_FadeOutElapsed += deltaTime;
+        float t = std::min(m_FadeOutElapsed / m_FadeOutDuration, 1.0f);
+        m_currentBGM->SetVolume(1.0f - t);
+        if (t >= 1.0f)
+        {
+            m_currentBGM->Stop();
+            m_IsFadingOut = false;
         }
     }
 }
@@ -71,15 +84,29 @@ void SoundManager::PlayBGM(const std::string& tag, bool loop)
     StopBGM(); // 前のBGMを止める
 
     m_currentBGM = m_soundEffects[tag]->CreateInstance();
+    m_currentBGM->SetVolume(1.0f);
     m_currentBGM->Play(loop);
 }
 
 
 
-void SoundManager::StopBGM() 
+void SoundManager::StopBGM()
 {
-    if (m_currentBGM) {
+    m_IsFadingOut = false;
+    if (m_currentBGM)
+    {
         m_currentBGM->Stop();
         m_currentBGM.reset();
     }
+}
+
+
+
+void SoundManager::FadeBGMOut(float duration)
+{
+    if (!m_currentBGM) return;
+    m_IsFadingOut     = true;
+    m_FadeOutDuration = duration;
+    m_FadeOutElapsed  = 0.0f;
+    m_currentBGM->SetVolume(1.0f);
 }

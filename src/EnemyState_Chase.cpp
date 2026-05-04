@@ -11,6 +11,7 @@ void EnemyChaseState::Enter(Enemy* enemy)
 {
     //std::cout << "【追跡状態】開始\n";
 
+    enemy->SetIsChasing(true);
     enemy->SetCurrentMaxSpeed(enemy->GetChaseSpeed()); // 追跡速度に設定
 
 	// 経路更新タイマーをランダムに初期化して、複数の敵が同時に経路計算しないようにする
@@ -93,4 +94,5 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime)
 void EnemyChaseState::Exit(Enemy* enemy)
 {
     std::cout << "【追跡状態】終了\n";
+    enemy->SetIsChasing(false);
 }

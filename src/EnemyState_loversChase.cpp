@@ -9,6 +9,7 @@
 
 void EnemyState_loversChase::Enter(Enemy* enemy)
 {
+    enemy->SetIsChasing(true);
     enemy->SetCurrentMaxSpeed(enemy->GetChaseSpeed());
     m_PathUpdateTimer = 0.0f;
 
@@ -87,4 +88,5 @@ void EnemyState_loversChase::Update(Enemy* enemy, float deltaTime)
 
 void EnemyState_loversChase::Exit(Enemy* enemy)
 {
+    enemy->SetIsChasing(false);
 }

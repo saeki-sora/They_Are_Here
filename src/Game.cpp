@@ -73,7 +73,7 @@ void Game::Update(float deltaTime)
 	ImGUI_Manager::DrawPanels();
 	DebugManager::GetInstance().Update(deltaTime);// チE�E��E�チE�E��E�マネージャー更新
 	EffectManager::GetInstance().Update(deltaTime);//エフェクト更新
-	SoundManager::GetInstance().Update();//サウンド�Eネ�Eジャー更新
+	SoundManager::GetInstance().Update(deltaTime);//サウンドマネージャー更新
 
 	SceneManager::GetInstance().Update(deltaTime);
 
