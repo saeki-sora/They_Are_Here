@@ -156,6 +156,7 @@ private:
 	static ID3D11SamplerState*       m_ShadowSampler;
 	static ID3D11Buffer*             m_ShadowBuffer;
 	static ID3D11RasterizerState*    m_ShadowRS;
+	static ID3D11RasterizerState*    m_NormalRS;
 	static Shader                    m_ShadowStaticShader;   // スタティックメッシュ用
 	static Shader                    m_ShadowSkinnedShader;  // スキニングメッシュ用
 

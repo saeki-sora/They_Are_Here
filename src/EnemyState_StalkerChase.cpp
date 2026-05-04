@@ -11,7 +11,6 @@
 void EnemyState_StalkerChase::Enter(Enemy* enemy)
 {
     // 追跡速度に設宁E
-    enemy->SetIsChasing(true);
     enemy->SetCurrentMaxSpeed(enemy->GetChaseSpeed());
     m_PathUpdateTimer = 0.0f;
     m_TimeSinceLostSight = 0.0f;
@@ -82,5 +81,4 @@ void EnemyState_StalkerChase::Update(Enemy* enemy, float deltaTime)
 
 void EnemyState_StalkerChase::Exit(Enemy* enemy)
 {
-    enemy->SetIsChasing(false);
 }

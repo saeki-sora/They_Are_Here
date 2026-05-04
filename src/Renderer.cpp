@@ -55,6 +55,7 @@ ID3D11ShaderResourceView* Renderer::m_ShadowSRV      = nullptr;
 ID3D11SamplerState*       Renderer::m_ShadowSampler  = nullptr;
 ID3D11Buffer*             Renderer::m_ShadowBuffer   = nullptr;
 ID3D11RasterizerState*    Renderer::m_ShadowRS       = nullptr;
+ID3D11RasterizerState*    Renderer::m_NormalRS       = nullptr;
 Shader                    Renderer::m_ShadowStaticShader{};
 Shader                    Renderer::m_ShadowSkinnedShader{};
 
@@ -431,6 +432,16 @@ void Renderer::Init()
         assert(SUCCEEDED(hr) && "Shadow RS 作成失敗");
     }
 
+    // 通常ラスタライザを Init 時に一度だけ生成（EndShadowPass で使い回す）
+    {
+        D3D11_RASTERIZER_DESC rd{};
+        rd.FillMode        = D3D11_FILL_SOLID;
+        rd.CullMode        = D3D11_CULL_NONE;
+        rd.DepthClipEnable = TRUE;
+        hr = m_Device->CreateRasterizerState(&rd, &m_NormalRS);
+        assert(SUCCEEDED(hr) && "Normal RS 作成失敗");
+    }
+
     // シャドウ用シェーダー作成
     m_ShadowStaticShader.Create("shader/shadowVS.hlsl", "shader/shadowPS.hlsl");
     m_ShadowSkinnedShader.Create("shader/shadowSkinnedVS.hlsl", "shader/shadowPS.hlsl");
@@ -590,6 +601,7 @@ void Renderer::Uninit()
     if (m_ShadowSampler) { m_ShadowSampler->Release(); m_ShadowSampler = nullptr; }
     if (m_ShadowBuffer)  { m_ShadowBuffer->Release();  m_ShadowBuffer  = nullptr; }
     if (m_ShadowRS)      { m_ShadowRS->Release();      m_ShadowRS      = nullptr; }
+    if (m_NormalRS)      { m_NormalRS->Release();      m_NormalRS      = nullptr; }
 }
 
 // シャドウパス開始
@@ -639,14 +651,7 @@ void Renderer::EndShadowPass()
     m_DeviceContext->RSSetViewports(1, &vp);
 
     // ラスタライザを通常に戻す
-    D3D11_RASTERIZER_DESC rd{};
-    rd.FillMode        = D3D11_FILL_SOLID;
-    rd.CullMode        = D3D11_CULL_NONE;
-    rd.DepthClipEnable = TRUE;
-    ID3D11RasterizerState* normalRS = nullptr;
-    m_Device->CreateRasterizerState(&rd, &normalRS);
-    m_DeviceContext->RSSetState(normalRS);
-    normalRS->Release();
+    m_DeviceContext->RSSetState(m_NormalRS);
 
     // シャドウマップをPSのt1にバインド
     m_DeviceContext->PSSetShaderResources(1, 1, &m_ShadowSRV);

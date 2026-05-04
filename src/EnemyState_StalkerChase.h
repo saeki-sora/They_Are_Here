@@ -7,6 +7,7 @@ public:
     void Enter(Enemy* enemy) override;
     void Update(Enemy* enemy, float deltaTime) override;
     void Exit(Enemy* enemy) override;
+    bool IsChaseState() const override { return true; }
 
 private:
     float m_PathUpdateTimer = 0.0f; // パス再計算用のタイマー

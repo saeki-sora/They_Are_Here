@@ -60,9 +60,6 @@ public:
 	//目的地に到達したかどうか
 	bool IsAtDestination() const { return m_Waypoints.empty(); }
 
-	bool IsChasing() const { return m_IsChasing; }
-	void SetIsChasing(bool v) { m_IsChasing = v; }
-
 	// パスをクリアしてその場で停止する
 	void ClearPath()
 	{
@@ -146,7 +143,6 @@ protected:
 	float m_MaxAngVel = DirectX::XMConvertToRadians(320.0f); // 最大旋回速度（ラジアン/秒）
 	float m_LookAhead = 4.0f;             // パス先読み距離（追跡時の滑らかさに影響）
 	float m_ArriveRadius = 20.0f;         // ウェイポイント到達とみなす距離
-	bool m_IsChasing = false;             // 追跡状態かどうか（最終ウェイポイントの到達半径を縮小するために使用）
 	float m_WallMargin = 3.0f;            // 壁からの安全余白（敵の体のサイズから算出）
 
 	float m_PathCornerCutDistance = 10.0f; // コーナーカット距離（大きいほど手前から曲がる）

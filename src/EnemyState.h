@@ -13,4 +13,6 @@ public:
     virtual void Update(Enemy* enemy, float deltaTime) = 0;
 
     virtual void Exit(Enemy* enemy) {}// 状態が終了するときに呼ばれる
+
+    virtual bool IsChaseState() const { return false; }// 追跡状態かどうか
 };

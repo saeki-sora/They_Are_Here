@@ -826,7 +826,7 @@ void Enemy::FollowPath(float deltaTime)
 	float distHead = toHead.Length();
 
 	// 追跡中の最終ウェイポイントはOBBが必ず重なる距離まで詰める
-	float useRadius = (m_IsChasing && m_Waypoints.size() == 1) ? 2.0f : m_ArriveRadius;
+	float useRadius = (m_State && m_State->IsChaseState() && m_Waypoints.size() == 1) ? 2.0f : m_ArriveRadius;
 	if (distHead <= useRadius)
 	{
 		//std::cout << "【移動】ウェイポイント到達！ 次へ進みます。\n";
