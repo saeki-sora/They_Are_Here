@@ -56,6 +56,7 @@ void Game::Init()
 
 	SoundManager::GetInstance().Init();
 	SoundManager::GetInstance().LoadSound("BGM_Title", L"assets/sound/amenisuteraretaningyou.wav");
+	SoundManager::GetInstance().LoadSound("SE_KeyPickup", L"assets/sound/SE_KeyPickup.wav");
 
 	SceneManager::GetInstance().ChangeScene<TitleScene>(std::make_unique<FadeTransition>(3.0f));// 3秒�Eフェードで遷移
 
@@ -65,7 +66,7 @@ void Game::Init()
 void Game::Update(float deltaTime)
 {
 	m_Input->Update();
-	// ImGui
+
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
