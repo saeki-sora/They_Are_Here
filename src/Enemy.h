@@ -81,6 +81,8 @@ public:
 	// ウィスカー判定
 	bool CheckWideLineOfSight(const DirectX::SimpleMath::Vector3& start, const DirectX::SimpleMath::Vector3& end, float radius) const;
 
+	bool IsChasing() const { return m_State && m_State->IsChaseState(); }//追跡状態かどうか
+
 	//ゲッター
 	float GetSearchSpeed() const { return m_SearchSpeed; }
 	float GetChaseSpeed() const { return m_ChaseSpeed; }

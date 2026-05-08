@@ -6,6 +6,7 @@
 #include "Player.h"
 #include "EffectManager.h"
 #include "FoundEffect.h"
+#include "SoundManager.h"
 
 void EnemyState_loversChase::Enter(Enemy* enemy)
 {
@@ -13,6 +14,7 @@ void EnemyState_loversChase::Enter(Enemy* enemy)
     m_PathUpdateTimer = 0.0f;
 
 	EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始
+	SoundManager::GetInstance().PlaySE("SE_Found");
 }
 
 

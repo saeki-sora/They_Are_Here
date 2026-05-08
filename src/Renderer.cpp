@@ -720,8 +720,8 @@ void Renderer::Begin()
 
     m_DeviceContext->PSSetSamplers(0, 1, &m_SamplerState);
 
-	//g_ImGuiManager.RenderImGui();//ImGUIの描画
-
+    // 全ライト更新をフレーム先頭で一括送信
+    PushLightBuffer();
 }
 
 //=======================================
@@ -1027,7 +1027,7 @@ void Renderer::UpdatePointLight(int id, const DirectX::SimpleMath::Vector3& pos,
         m_LightData.Lights[id].Position   = Vector4(pos.x, pos.y, pos.z, range);
         m_LightData.Lights[id].Color      = color;
         m_LightData.Lights[id].Color.w    = 1.0f; // point light
-        PushLightBuffer();
+        // PushLightBuffer はフレーム先頭の Begin() で一括送信
     }
 }
 
@@ -1059,9 +1059,7 @@ void Renderer::UpdateSpotLight(int id, const DirectX::SimpleMath::Vector3& pos, 
         // 色とタイプを更新 (w=2.0f はスポットライト)
         m_LightData.Lights[id].Color = color;
         m_LightData.Lights[id].Color.w = 2.0f;
-
-        // GPUへ転送
-        PushLightBuffer();
+        // PushLightBuffer はフレーム先頭の Begin() で一括送信
     }
 }
 
@@ -1075,7 +1073,7 @@ void Renderer::RemoveLight(int id)
     if (id >= 0 && id < MAX_POINT_LIGHTS)
     {
         m_LightData.Lights[id].Color.w = 0.0f; // 無効化
-        PushLightBuffer();
+        // PushLightBuffer はフレーム先頭の Begin() で一括送信
     }
 }
 

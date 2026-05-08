@@ -71,7 +71,7 @@ bool Texture::Load(const std::string& filename)
             return false;
         }
 
-        // ★ミップマップを生成実行
+        // ミップマップを生成実行
         if (ctx)
         {
             ctx->GenerateMips(m_srv.Get());

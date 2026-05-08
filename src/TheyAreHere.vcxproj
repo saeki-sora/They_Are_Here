@@ -268,7 +268,6 @@
     <ClCompile Include="SootObject.cpp" />
     <ClCompile Include="SootRainEffect.cpp" />
     <ClCompile Include="SoundManager.cpp" />
-    <ClCompile Include="SpeedUpItem.cpp" />
     <ClCompile Include="Stage1Scene.cpp" />
     <ClCompile Include="StalkerEnemy.cpp" />
     <ClCompile Include="StaticMesh.cpp" />
@@ -354,7 +353,6 @@
     <ClInclude Include="SootObject.h" />
     <ClInclude Include="SootRainEffect.h" />
     <ClInclude Include="SoundManager.h" />
-    <ClInclude Include="SpeedUpItem.h" />
     <ClInclude Include="Stage1Scene.h" />
     <ClInclude Include="StalkerEnemy.h" />
     <ClInclude Include="StaticMesh.h" />

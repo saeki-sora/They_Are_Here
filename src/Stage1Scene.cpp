@@ -15,6 +15,7 @@
 #include "DifficultyManager.h"
 #include "Application.h"
 #include "TitleScene.h"
+#include "SoundManager.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -265,7 +266,7 @@ void Stage1Scene::OnUpdate(float deltaTime)
 {
 	// ポーズ処理
 	auto& cam = Game::GetInstance().GetMainCamera();
-	PauseAction pauseAction = m_OptionMenu->Update();
+	PauseAction pauseAction = m_OptionMenu->Update(deltaTime);
 
 	switch (pauseAction)
 	{
@@ -317,6 +318,72 @@ void Stage1Scene::OnUpdate(float deltaTime)
 	}
 
 	Enemy::ResetPathCalculationCount();// 今フレームのパス計算数をリセットする
+
+	// BGM管理：開始・追跡中のPause/Resume・距離ベース音量制御
+	{
+		// フェードイン完了後に一度だけBGMを開始
+		if (!m_BGMStarted && !SceneManager::GetInstance().IsTransitioning())
+		{
+			SoundManager::GetInstance().PlayBGM("BGM_Stage1", true);
+			m_BGMVolume = 1.0f;
+			m_BGMStarted = true;
+		}
+
+		if (m_BGMStarted)
+		{
+			auto enemies = FindAllObjects<Enemy>();
+			bool anyChasing = false;
+			float minDist = FLT_MAX;
+
+			if (auto player = FindObject<Player>().lock())
+			{
+				for (auto& weak : enemies)
+				{
+					if (auto e = weak.lock())
+					{
+						if (e->IsChasing()) anyChasing = true;
+						float d = (e->GetPosition() - player->GetPosition()).Length();
+						if (d < minDist) minDist = d;
+					}
+				}
+			}
+
+			if (anyChasing)
+			{
+				// Chase開始時に一度だけPause
+				if (!m_IsEnemyChasing)
+				{
+					SoundManager::GetInstance().PauseBGM();
+					m_IsEnemyChasing = true;
+				}
+				m_BGMResumeTimer = 0.0f;
+			}
+			else
+			{
+				// 追跡解除後、BGM_RESUME_DELAY 秒経過でResume
+				if (m_IsEnemyChasing)
+				{
+					m_BGMResumeTimer += deltaTime;
+					if (m_BGMResumeTimer >= BGM_RESUME_DELAY)
+					{
+						SoundManager::GetInstance().ResumeBGM();
+						m_IsEnemyChasing = false;
+						m_BGMResumeTimer = 0.0f;
+					}
+				}
+				else
+				{
+					// 通常時：距離ベースの音量制御
+					float t = std::clamp(
+						(minDist - BGM_NEAR_DIST) / (BGM_FAR_DIST - BGM_NEAR_DIST),
+						0.0f, 1.0f);
+					float targetVolume = BGM_MIN_VOLUME + (1.0f - BGM_MIN_VOLUME) * t;
+					m_BGMVolume += (targetVolume - m_BGMVolume) * std::min(BGM_LERP_SPEED * deltaTime, 1.0f);
+					SoundManager::GetInstance().SetBGMVolume(m_BGMVolume);
+				}
+			}
+		}
+	}
 
 	// ミニマップの更新（個別管理のため手動呼び出し）
 	if (m_MiniMap)
@@ -476,8 +543,8 @@ void Stage1Scene::OnDrawUI()
 	const float tutW = 350.0f;
 	const float tutH = 80.0f;
 
-	const float tutX = -410.0f;
-	const float tutY = 270.0f;
+	const float tutX = -440.0f;
+	const float tutY = 300.0f;
 
 	m_OptionGuide->SetScale(tutW, tutH, 1.0f);
 	m_OptionGuide->SetPosition(tutX, tutY, 0.0f);
@@ -503,6 +570,8 @@ void Stage1Scene::OnDrawOverlayUI()
 // 終了処理
 void Stage1Scene::OnUnload()
 {
+	SoundManager::GetInstance().StopBGM();
+
 	// ミニマップを個別管理しているため、手動で Uninit を呼ぶ
 	if (m_MiniMap)
 	{

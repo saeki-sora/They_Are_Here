@@ -8,7 +8,6 @@
 #include "Enemy.h"
 #include "Pathfinder.h"
 #include "InvisibleItem.h"
-#include "SpeedUpItem.h"
 #include "StalkerEnemy.h"
 #include "GoalKey.h"
 #include "loversEnemy.h"
@@ -540,7 +539,7 @@ void MakeMap::SetObjects()
                 e_pos.z = -(HALF_BLOCK - MAP_CENTER_Y + MAP::Config::BLOCK_SIZE * c.y);
 
                 plan.enemy.push_back(ObjectSpec{ c.x, c.y, e_pos, Vector3(MAP::Config::EnemyFallbackSize, MAP::Config::EnemyFallbackSize, MAP::Config::EnemyFallbackSize) });
-                std::cout << "[Enemy] Fallback: 1 体だけ配置\n";
+                //std::cout << "[Enemy] Fallback: 1 体だけ配置\n";
             }
         }
 
@@ -679,7 +678,7 @@ void MakeMap::SetItems()
 
     if (walkableCells.empty())
     {
-        std::cout << "アイテム配置場所がないです\n";
+        //std::cout << "アイテム配置場所がないです\n";
         return;
     }
 

@@ -161,7 +161,7 @@ void Player::Update(float deltaTime)
 		{
 			m_IsInvisible = false;
 			m_InvisibleTimer = 0.0f;
-			std::cout << "!!! POWER UP EXPIRED !!!\n";
+			//std::cout << "!!! POWER UP EXPIRED !!!\n";
 		}
 	}
 
@@ -446,8 +446,7 @@ void Player::Update(float deltaTime)
 			else
 			{
 				//カギを持っていない場合の処理
-				// ここで「カギが必要です！」といった画像を表示するフラグを立てる等の処理を行う
-				std::cout << "You need the Key to goal!" << std::endl;
+				//std::cout << "You need the Key to goal!" << std::endl;
 
 			}
 		}
@@ -462,7 +461,7 @@ void Player::StartInvisible(float duration)
 {
 	m_IsInvisible = true;
 	m_InvisibleTimer = duration;
-	std::cout << "!!! POWER UP START (Time: " << duration << ") !!!\n";
+	//std::cout << "!!! POWER UP START (Time: " << duration << ") !!!\n";
 }
 
 
@@ -600,7 +599,7 @@ void Player::TryBreakWall()
 
 	if (!m_Map)
 	{
-		std::cout << "Error: Map reference is null\n";
+		//std::cout << "Error: Map reference is null\n";
 		return;
 	}
 
@@ -624,7 +623,7 @@ void Player::TryBreakWall()
 
 	if (gridX < 0 || gridY < 0)
 	{
-		std::cout << "Error: Invalid grid coordinates\n";
+		//std::cout << "Error: Invalid grid coordinates\n";
 		return;
 	}
 
@@ -634,7 +633,7 @@ void Player::TryBreakWall()
 	// ブロックオブジェクトを削除
 	block->Destroy();
 
-	std::cout << "Wall broken at grid (" << gridX << ", " << gridY << ")\n";
+	//std::cout << "Wall broken at grid (" << gridX << ", " << gridY << ")\n";
 }
 
 

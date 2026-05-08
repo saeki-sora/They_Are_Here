@@ -9,8 +9,10 @@ using namespace DirectX;
 class SoundManager
 {
 public:
+
     // シングルトン化
-    static SoundManager& GetInstance() {
+    static SoundManager& GetInstance() 
+    {
         static SoundManager instance;
         return instance;
     }
@@ -23,7 +25,8 @@ public:
     void PlaySE(const std::string& tag);
     void PlayBGM(const std::string& tag, bool loop = true);
     void StopBGM();
-    void FadeBGMOut(float duration); // BGMをフェードアウトして停止
+    void FadeBGMOut(float duration);    // BGMをフェードアウトして停止
+    void SetBGMVolume(float volume);    // BGMの音量を直接設定（0.0〜1.0）
     void PauseBGM();
     void ResumeBGM();
 

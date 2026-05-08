@@ -36,6 +36,12 @@ private:
     float m_LightFlickerTimer = 0.0f;
     LIGHT m_BaseLight{};  // 基準ライト設定を保存
 
+    // インゲームのBGM状態管理
+    float m_BGMVolume        = 1.0f;  // 現在のBGM音量
+    bool  m_BGMStarted       = false; // フェードイン完了後にBGMを開始したかどうか
+    bool  m_IsEnemyChasing   = false; // 前フレームにいずれかの敵が追跡中だったか
+    float m_BGMResumeTimer   = 0.0f;  // 追跡解除後のBGM再開待機タイマー
+
     // カメラ演出の設定
     static constexpr float GOAL_VIEW_DURATION = 2.0f;   // ゴールを眺める時間(秒)
 	static constexpr float CAMERA_MOVE_DURATION = 3.0f;   // カメラ移動の時間(秒)
@@ -48,6 +54,13 @@ private:
     //スタートからどれくらい前方を見るか／俯瞰時にどれだけズラすか
     static constexpr float START_LOOK_AHEAD_BLOCKS = 2.0f; // スタートから2マス前を見る
     static constexpr float BIRD_EYE_LOOK_AHEAD_BLOCKS = 1.0f; // マップ中央から1マス前を見る
+
+    // 敵距離によるBGM音量制御
+    static constexpr float BGM_NEAR_DIST  = 180.0f; // この距離以内で最小音量
+    static constexpr float BGM_FAR_DIST   = 500.0f; // この距離以上で最大音量
+    static constexpr float BGM_MIN_VOLUME    = 0.15f; // 敵が近いときの最小音量
+    static constexpr float BGM_LERP_SPEED   = 2.0f;  // 音量補間速度（/秒）
+    static constexpr float BGM_RESUME_DELAY = 1.5f;  // 追跡解除後にBGMを再開するまでの秒数
 
 
     std::unique_ptr<VisualObject> m_UI_Capsule;//カプセルUI

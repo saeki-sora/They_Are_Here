@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Game.h"
 #include "Renderer.h"
 #include"SimpleBoxCollider.h"
@@ -18,28 +18,28 @@
 // コンストラクタ
 Game::Game()
 {
-	m_Input = std::make_unique<Input>(); //入力�E琁E�E��E�作�E
-	m_MainCamera = std::make_unique<Camera>(); //カメラを作�E
+	m_Input = std::make_unique<Input>(); //入力管理クラスの作成
+	m_MainCamera = std::make_unique<Camera>(); //カメラを作成
 }
 
-// チE�E��E�トラクタ
+// デストラクタ
 Game::~Game()
 {
 
 }
 
-// インスタンスを取征E
+// インスタンスを取得
 Game& Game::GetInstance()
 {
 	static Game instance;
 	return instance;
 }
 
-// 初期匁E
+// 初期化
 void Game::Init()
 {
-	Renderer::Init();// 描画初期匁E
-	m_MainCamera->Init();// カメラ初期匁E
+	Renderer::Init();// 描画初期化
+	m_MainCamera->Init();// カメラ初期化
 
 	SceneManager::GetInstance().Init();
 	SceneManager::GetInstance().RegisterScene<TitleScene>();
@@ -48,17 +48,19 @@ void Game::Init()
 	SceneManager::GetInstance().RegisterScene<GameClearScene>();
 	SceneManager::GetInstance().RegisterScene<GameOverScene>();
 
-	DebugManager::Create();// チE�E��E�チE�E��E�マネージャーの作�E
+	DebugManager::Create();// チェックマネージャーの作成
 
-	SimpleBoxCollider::InitDebugDraw(Renderer::GetDevice(), Renderer::GetDeviceContext()); // コライダーの初期匁E
-	EffectManager::GetInstance().Init();//エフェクト�E初期匁E
+	SimpleBoxCollider::InitDebugDraw(Renderer::GetDevice(), Renderer::GetDeviceContext()); // コライダーの初期化
+	EffectManager::GetInstance().Init();//エフェクトの初期化
 	ConfigManager::GetInstance().Load("json/enemy_param.json");//設定ファイル読み込み
 
 	SoundManager::GetInstance().Init();
 	SoundManager::GetInstance().LoadSound("BGM_Title", L"assets/sound/amenisuteraretaningyou.wav");
 	SoundManager::GetInstance().LoadSound("SE_KeyPickup", L"assets/sound/SE_KeyPickup.wav");
+	SoundManager::GetInstance().LoadSound("SE_Found", L"assets/sound/Found.wav");
+	SoundManager::GetInstance().LoadSound("BGM_Stage1", L"assets/sound/shinigamitowaltz.wav");
 
-	SceneManager::GetInstance().ChangeScene<TitleScene>(std::make_unique<FadeTransition>(3.0f));// 3秒�Eフェードで遷移
+	SceneManager::GetInstance().ChangeScene<TitleScene>(std::make_unique<FadeTransition>(3.0f));// 3秒フェードで遷移
 
 }
 
@@ -67,11 +69,7 @@ void Game::Update(float deltaTime)
 {
 	m_Input->Update();
 
-	ImGui_ImplDX11_NewFrame();
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
-	ImGUI_Manager::DrawPanels();
-	DebugManager::GetInstance().Update(deltaTime);// チE�E��E�チE�E��E�マネージャー更新
+	DebugManager::GetInstance().Update(deltaTime);// チェックマネージャー更新
 	EffectManager::GetInstance().Update(deltaTime);//エフェクト更新
 	SoundManager::GetInstance().Update(deltaTime);//サウンドマネージャー更新
 
@@ -83,7 +81,10 @@ void Game::Update(float deltaTime)
 // 描画
 void Game::Draw()
 {
-	// 描画前�E琁E
+	// ImGui フレーム開始
+	ImGUI_Manager::BeginFrame();
+
+	// 描画前の処理
 	// シャドウパス
 	Renderer::BeginShadowPass();
 	SceneManager::GetInstance().DrawShadow();
@@ -104,26 +105,29 @@ void Game::Draw()
 
 	SceneManager::GetInstance().DrawTransition();//トランジション描画
 
-	// 描画後�E琁E
+	// デバッグUI
+	ImGUI_Manager::DrawPanels();
+
+	// 描画後の処理
 	Renderer::End();
 }
 
-// 終亁E�E�E琁E
+// 終了処理
 void Game::Uninit()
 {
-	// 描画終亁E�E�E琁E
+	// 描画終了処理
 	ImGUI_Manager::Uninit();
 
 	Renderer::Uninit();
 
 	SceneManager::GetInstance().Uninit();
-	SoundManager::GetInstance().Uninit();//サウンド�Eネ�Eジャー終亁E�E�E琁E
+	SoundManager::GetInstance().Uninit();//サウンドマネージャー終了処理
 
 	EffectManager::GetInstance().Uninit();
 
 	DebugManager::Destroy();
 
-	// カメラ終亁E�E�E琁E
+	// カメラ終了処理
 	m_MainCamera->Uninit();
 
 }

@@ -39,9 +39,6 @@ void Camera::Init()
 //=======================================
 void Camera::Update(float deltaTime)
 {
-
-    // ESC はポーズメニューが処理するため Camera では扱わない
-
     // マウスキャプチャがOFFの時、左クリックでマウスキャプチャを有効化
     // ポーズ中（m_ClickToRecapture == false）はクリックしても復帰させない
     if (!m_MouseCaptured && m_ClickToRecapture && Input::GetKeyPress(VK_LBUTTON))

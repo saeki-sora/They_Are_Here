@@ -110,3 +110,24 @@ void SoundManager::FadeBGMOut(float duration)
     m_FadeOutElapsed  = 0.0f;
     m_currentBGM->SetVolume(1.0f);
 }
+
+
+
+void SoundManager::SetBGMVolume(float volume)
+{
+    if (m_currentBGM) m_currentBGM->SetVolume(volume);
+}
+
+
+
+void SoundManager::PauseBGM()
+{
+    if (m_currentBGM) m_currentBGM->Pause();
+}
+
+
+
+void SoundManager::ResumeBGM()
+{
+    if (m_currentBGM) m_currentBGM->Resume();
+}

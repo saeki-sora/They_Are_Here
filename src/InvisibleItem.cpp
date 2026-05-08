@@ -21,21 +21,21 @@ InvisibleItem::InvisibleItem(
 {
 }
 
-// チE��トラクタ
+//デストラクタ
 InvisibleItem::~InvisibleItem() {}
 
 //=======================================
-// 初期化�E琁E
+// 初期化処理
 //=======================================
 void InvisibleItem::Init()
 {
-	// メチE��ュ読み込み
+	// メッシュ読み込み
 	StaticMesh staticmesh;
 
-	// 3DモチE��チE�Eタ
+	// 3Dモデルファイル
 	std::u8string modelFile = u8"assets/model/InvisibleItem/InvisibleItem.fbx";
 
-	// チE��スチャチE��レクトリ
+	// テクスチャディレクトリ
 	std::string texDirectory = "assets/model/InvisibleItem";
 
 	// Meshを読み込む
@@ -44,82 +44,82 @@ void InvisibleItem::Init()
 
 	m_MeshRenderer.Init(staticmesh);
 
-	//当たり判定用のサイズを設宁E
+	//当たり判定用のサイズを設定
 	collider.size = GetScale() * (staticmesh.GetMax() - staticmesh.GetMin());
 
-	// シェーダオブジェクト生戁E
+	// シェーダオブジェクト生成
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
 
-	// サブセチE��惁E��取征E
+	// サブセット取得
 	m_subsets = staticmesh.GetSubsets();
 
-	// チE��スチャ惁E��取征E
+	// テクスチャ取得
 	m_Textures = staticmesh.GetTextures();
 
-	// マテリアル惁E��取征E
+	// マテリアル取得
 	vector<MATERIAL> materials = staticmesh.GetMaterials();
 
-	// マテリアル数刁E��ーチE
+	// マテリアル数分ループ
 	for (int i = 0; i < materials.size(); ++i)
 	{
-		// マテリアルオブジェクト生戁E
+		// マテリアルオブジェクト生成
 		std::unique_ptr<Material> m = std::make_unique<Material>();
 
-		// マテリアル惁E��をセチE��
+		// マテリアル情報を設定
 		m->Create(materials[i]);
 
-		// マテリアルオブジェクトを配�Eに追加
+		// マテリアルオブジェクトを配列に追加
 		m_Materiales.push_back(std::move(m));
 	}
 }
 
 //=======================================
-// 更新処琁E
+// 更新処理
 //=======================================
 void InvisibleItem::Update(float deltaTime)
 {
 	m_Rotation.y += 0.01f;
 	collider.rotation = DirectX::SimpleMath::Quaternion::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 
-	//プレイヤーを取征E
+	//プレイヤーを取得
 	auto playerWeak = SceneManager::GetInstance().FindObject<Player>();
 	if (auto player = playerWeak.lock())
 	{
-		//プレイヤーと自刁E�Eコライダーで衝突判宁E
+		//プレイヤーと自分のコライダーで衝突判定
 		if (this->collider.CheckCollision(player->GetCollider()))
 		{
 			if (player->GetInvisibleStock() < player->GetMaxInvisibleStock())
 			{
-				player->AddInvisibleStock(1); // ストックめE増やぁE
-				this->Destroy();              // 自刁E��破棁E
+				player->AddInvisibleStock(1); // ストックを増やす
+				this->Destroy();              // 自分を破棄
 			}
 		}
 	}
 }
 
 //=======================================
-// 描画処琁E
+// 描画処理
 //=======================================
 void InvisibleItem::Draw()
 {
-		// SRT惁E��作�E
+		// SRT行列作成
 		Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 		Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
 		Matrix s = Matrix::CreateScale(m_Scale.x, m_Scale.y, m_Scale.z);
 
 		Matrix worldmtx;
 		worldmtx = s * r * t;
-		Renderer::SetWorldMatrix(&worldmtx); // GPUにセチE��
+		Renderer::SetWorldMatrix(&worldmtx); // GPUにセット
 
 		m_Shader.SetGPU();
 
-		// インチE��クスバッファ・頂点バッファをセチE��
+		// インデックスバッファ・頂点バッファをセット
 		m_MeshRenderer.BeforeDraw();
 
-		//マテリアル数刁E��ーチE
+		//マテリアル数分ループ
 		for (int i = 0; i < m_subsets.size(); i++)
 		{
-			// マテリアルをセチE��(サブセチE��惁E��の中にあるマテリアルインチE��クスを使用)
+			// マテリアルをセット(サブセットの中にあるマテリアルインデックスを使用)
 			m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
 
 
@@ -129,8 +129,8 @@ void InvisibleItem::Draw()
 			}
 
 			m_MeshRenderer.DrawSubset(
-				m_subsets[i].IndexNum, // 描画するインチE��クス数
-				m_subsets[i].IndexBase, // 最初�EインチE��クスバッファの位置	
+				m_subsets[i].IndexNum, // 描画するインデックス数
+				m_subsets[i].IndexBase, // 最初のインデックスバッファの位置
 				m_subsets[i].VertexBase); // 頂点バッファの最初から使用
 		}
 	

@@ -48,7 +48,7 @@ std::vector<GridCoord> Pathfinder::FindPath(const MakeMap* map,
 	auto flatten = [maxY](int x, int y) { return x * maxY + y; };
 	std::unordered_map<int, Node> cameFrom;
 
-
+	
 	std::priority_queue<Node, std::vector<Node>, NodeCompare> open;
 	Node startNode{ start, 0.0f, Heuristic(start, goal), { -1, -1 } };
 	cameFrom.emplace(flatten(start.x, start.y), startNode);

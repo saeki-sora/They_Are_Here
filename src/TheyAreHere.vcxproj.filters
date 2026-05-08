@@ -276,9 +276,6 @@
     <ClCompile Include="ConfigManager.cpp">
       <Filter>ソース ファイル\System</Filter>
     </ClCompile>
-    <ClCompile Include="SpeedUpItem.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="StalkerEnemy.cpp">
       <Filter>ソース ファイル\Object\Enemy</Filter>
     </ClCompile>
@@ -535,9 +532,6 @@
     </ClInclude>
     <ClInclude Include="ConfigManager.h">
       <Filter>ヘッダー ファイル\System</Filter>
-    </ClInclude>
-    <ClInclude Include="SpeedUpItem.h">
-      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="StalkerEnemy.h">
       <Filter>ヘッダー ファイル\Object\Enemy</Filter>

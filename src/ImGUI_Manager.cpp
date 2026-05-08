@@ -28,6 +28,17 @@ void ImGUI_Manager::Init(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* c
 }
 
 // ============================================================
+// フレーム開始
+// ============================================================
+void ImGUI_Manager::BeginFrame()
+{
+    if (!s_Initialized) return;
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+}
+
+// ============================================================
 // 全パネルをまとめて描画する
 // ============================================================
 void ImGUI_Manager::DrawPanels()

@@ -170,11 +170,13 @@ void MiniMap::Init()
 	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
 	HRESULT hr = Renderer::GetDevice()->CreateBuffer(&cbDesc, nullptr, m_UVAdjustCB.GetAddressOf());
-	if (SUCCEEDED(hr)) {
-		std::cout << "[MiniMap] UV Adjust constant buffer created successfully" << std::endl;
+	if (SUCCEEDED(hr))
+	{
+		//std::cout << "[MiniMap] UV Adjust constant buffer created successfully" << std::endl;
 	}
-	else {
-		std::cout << "[MiniMap] ERROR: Failed to create UV Adjust constant buffer" << std::endl;
+	else
+	{
+		//std::cout << "[MiniMap] ERROR: Failed to create UV Adjust constant buffer" << std::endl;
 	}
 
 	CreateRenderTargets();
@@ -452,7 +454,7 @@ void MiniMap::DrawMapIcons()
 
 		Renderer::SetWorldMatrix(&world);
 
-		// BakeしたチEスチャを使用
+		// 事前生成した壁テクスチャを描画
 		context->PSSetShaderResources(0, 1, m_StaticMapSRV.GetAddressOf());
 
 		context->DrawIndexed(6, 0, 0);

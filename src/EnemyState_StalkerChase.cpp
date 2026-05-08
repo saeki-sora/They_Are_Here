@@ -7,15 +7,17 @@
 #include "EnemyState_Search.h"
 #include "EffectManager.h"
 #include "FoundEffect.h"
+#include "SoundManager.h"
 
 void EnemyState_StalkerChase::Enter(Enemy* enemy)
 {
-    // 追跡速度に設宁E
+	// 追跡モードに入るときは、現在の位置からプレイヤーへのパスを引いておく
     enemy->SetCurrentMaxSpeed(enemy->GetChaseSpeed());
     m_PathUpdateTimer = 0.0f;
     m_TimeSinceLostSight = 0.0f;
 
-	EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始    
+	EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始
+	SoundManager::GetInstance().PlaySE("SE_Found");
 }
 
 void EnemyState_StalkerChase::Update(Enemy* enemy, float deltaTime)
@@ -29,16 +31,16 @@ void EnemyState_StalkerChase::Update(Enemy* enemy, float deltaTime)
 
     if (!player || player->IsInvisible())
     {
-        return; // プレイヤーがいなぁE��合�E征E��E
+        return; // プレイヤーがいないか、不可視状態
     }
 
     Vector3 playerPos = player->GetPosition();
 
     // -----------------------------------------------------------
-    // 諦める判定ロジチE��
+    // 諦める判定ロジック
     // -----------------------------------------------------------
 
-    // 位置はわかるが物琁E��に視線が通ってぁE��かをチェチE��
+    // 位置はわかるが物体に視線が通っているかをチェック
     bool hasLineOfSight = stalker->HasLineOfSight(stalker->GetPosition(), playerPos, 0.0f);
 
     if (hasLineOfSight)
@@ -47,30 +49,31 @@ void EnemyState_StalkerChase::Update(Enemy* enemy, float deltaTime)
     }
     else
     {
-        // 壁�E裏などにぁE��姿が見えなぁE��ら、タイマ�Eを進める
-        // 位置は透視してぁE��ので追ぁE��け続けるが、�E味は失われてぁE��
+        // 壁の裏などに姿が見えなくなったら、タイマーを進める
+        // 位置は透視しているので追い続けるが、視線は失われている
         m_TimeSinceLostSight += deltaTime;
     }
 
-    // 一定時間姿を見てぁE��ければ諦める
+    // 一定時間姿を見ていなければ諦める
     if (m_TimeSinceLostSight >= GIVE_UP_TIME)
     {
-        // ロチE��オン解除
+        // ロックオン解除
         stalker->ResetLockOn();
 
-        // 探索モードに戻めE
+        // 探索モードに戻す
         stalker->ChangeState(std::make_unique<EnemySearchState>());
-        return; // 追跡終亁E
+        return; // 追跡終了
     }
 
 
     if (m_PathUpdateTimer >= enemy->GetChasePathUpdateInterval())
     {
-        // 諦めてぁE��ぁE��は、正確な位置へパスを引く
+		// 定期的にパスを再計算して、プレイヤーの動きに追従する
         enemy->ComputePathTo(playerPos);
         m_PathUpdateTimer = 0.0f;
     }
 
+	// 目的地に向かって移動する
     Vector3 velocity = enemy->GetVelocity();
     if (velocity.LengthSquared() > 0.001f)
     {

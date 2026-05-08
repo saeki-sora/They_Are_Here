@@ -4,6 +4,7 @@
 #include "Enemy.h"
 #include"EffectManager.h"
 #include "FoundEffect.h"
+#include "SoundManager.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -25,6 +26,7 @@ void EnemyChaseState::Enter(Enemy* enemy)
     enemy->ComputePathTo(enemy->GetLastPlayerPos());
 
 	EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始
+	SoundManager::GetInstance().PlaySE("SE_Found");
 }
 
 
