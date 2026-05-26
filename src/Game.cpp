@@ -55,10 +55,11 @@ void Game::Init()
 	ConfigManager::GetInstance().Load("json/enemy_param.json");//設定ファイル読み込み
 
 	SoundManager::GetInstance().Init();
-	SoundManager::GetInstance().LoadSound("BGM_Title", L"assets/sound/amenisuteraretaningyou.wav");
-	SoundManager::GetInstance().LoadSound("SE_KeyPickup", L"assets/sound/SE_KeyPickup.wav");
-	SoundManager::GetInstance().LoadSound("SE_Found", L"assets/sound/Found.wav");
-	SoundManager::GetInstance().LoadSound("BGM_Stage1", L"assets/sound/shinigamitowaltz.wav");
+	SoundManager::GetInstance().LoadSound(SoundTag::BGM_Title,    L"assets/sound/amenisuteraretaningyou.wav");
+	SoundManager::GetInstance().LoadSound(SoundTag::SE_KeyPickup, L"assets/sound/SE_KeyPickup.wav");
+	SoundManager::GetInstance().LoadSound(SoundTag::SE_Found,     L"assets/sound/Found.wav");
+	SoundManager::GetInstance().LoadSound(SoundTag::BGM_Stage1,   L"assets/sound/shinigamitowaltz.wav");
+	SoundManager::GetInstance().LoadSound(SoundTag::BGM_Chase,    L"assets/sound/norowaretayakata.wav");
 
 	SceneManager::GetInstance().ChangeScene<TitleScene>(std::make_unique<FadeTransition>(3.0f));// 3秒フェードで遷移
 

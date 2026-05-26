@@ -75,6 +75,14 @@ void FloorBlock::Update(float deltaTime)
 //=======================================
 void FloorBlock::Draw()
 {
+	// フラスタムカリング
+	auto camera = Game::GetInstance().GetMainCamera();
+	DirectX::BoundingBox aabb(m_Position, m_Scale);
+	DirectX::BoundingSphere bs;
+	DirectX::BoundingSphere::CreateFromBoundingBox(bs, aabb);
+	if (!camera.GetFrustum().Intersects(bs))
+		return;
+
 	// SRT情報作成
 	Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 	Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
@@ -116,6 +124,14 @@ void FloorBlock::Draw()
 // シャドウマップ描画
 void FloorBlock::DrawShadow()
 {
+	// フラスタムカリング
+	auto camera = Game::GetInstance().GetMainCamera();
+	DirectX::BoundingBox aabb(m_Position, m_Scale);
+	DirectX::BoundingSphere bs;
+	DirectX::BoundingSphere::CreateFromBoundingBox(bs, aabb);
+	if (!camera.GetFrustum().Intersects(bs))
+		return;
+
 	// ワールド行列を計算
 	Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 	Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);

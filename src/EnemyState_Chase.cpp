@@ -26,7 +26,7 @@ void EnemyChaseState::Enter(Enemy* enemy)
     enemy->ComputePathTo(enemy->GetLastPlayerPos());
 
 	EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始
-	SoundManager::GetInstance().PlaySE("SE_Found");
+	SoundManager::GetInstance().PlaySE(SoundTag::SE_Found);
 }
 
 
@@ -94,5 +94,7 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime)
 
 void EnemyChaseState::Exit(Enemy* enemy)
 {
+#ifdef _DEBUG
     std::cout << "【追跡状態】終了\n";
+#endif
 }

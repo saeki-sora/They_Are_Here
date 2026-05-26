@@ -99,7 +99,7 @@ void DifficultySelectScene::OnUpdate(float deltaTime)
         m_InputEnabled = false;
         m_IsDecided    = true;
         m_DecideTimer  = 0.0f;
-        SoundManager::GetInstance().FadeBGMOut(1.5f);
+        SoundManager::GetInstance().FadeBGMOut(SoundTag::BGM_Title, 1.5f);
     }
 }
 

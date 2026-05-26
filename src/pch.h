@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <d3d11.h>
+#include <dxgi1_6.h>
 #include <DirectXMath.h>
 #include <DirectXCollision.h>
 #include <io.h>

@@ -32,7 +32,9 @@ public:
 		T* ptr = newEffect.get();       // 生ポインタを取得
 		m_effects.push_back(std::move(newEffect));// 所有権をベクターに移動
 
+#ifdef _DEBUG
 		std::cout << "[EffectManager] StartEffect returning pointer: " << ptr << std::endl;
+#endif
 
 		return ptr;                     // 生ポインタを返す
 	}

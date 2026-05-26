@@ -202,6 +202,7 @@ void Application::MainLoop()
 
 
 	// FPS固定用変数
+	static constexpr double TARGET_FRAME_TIME = 1.0 / 60.0; // 目標フレーム時間（60fps）
 	LARGE_INTEGER liWork; // workがつく変数は作業用変数
 	long long frequency;// どれくらい細かく時間をカウントできるか
 	QueryPerformanceFrequency(&liWork);
@@ -214,43 +215,48 @@ void Application::MainLoop()
 
 
 	// ゲームループ
-	while (1)
+	bool running = true;
+	while (running)
 	{
-		// 新たにメッセージがあれば
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		// 溜まったメッセージを全部処理してからゲーム更新へ進む
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
-			// ウィンドウプロシージャにメッセージを送る
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 
-			// 「WM_QUIT」メッセージを受け取ったらループを抜ける
-			if (msg.message == WM_QUIT) {
+			if (msg.message == WM_QUIT)
+			{
+				running = false;
 				break;
 			}
 		}
-		else
+		if (!running) break;
+
+		QueryPerformanceCounter(&liWork);// 現在時間を取得
+		nowCount = liWork.QuadPart;
+
+		// 目標フレーム時間に達するまで待機
+		while (static_cast<double>(nowCount - oldCount) / static_cast<double>(frequency) < TARGET_FRAME_TIME)
 		{
-			QueryPerformanceCounter(&liWork);// 現在時間を取得
+			double remaining = TARGET_FRAME_TIME - static_cast<double>(nowCount - oldCount) / static_cast<double>(frequency);
+			if (remaining > 0.002) // 2ms以上余裕があればSleep
+				Sleep(1);
+			QueryPerformanceCounter(&liWork);
 			nowCount = liWork.QuadPart;
-			// 1/60秒が経過したか？
-			if (nowCount >= oldCount + frequency / 60) {
-
-				// 経過秒数を計算
-				double dt = static_cast<double>(nowCount - oldCount) / static_cast<double>(frequency);
-
-				// 異常なスパイクを抑える
-				if (dt > 0.1) dt = 0.1;//100ms上限
-
-				// ゲーム処理実行
-				game.Update(static_cast<float>(dt));
-
-				game.Draw();
-
-
-				fpsCounter++; // ゲーム処理を実行したら＋１する
-				oldCount = nowCount;
-			}
 		}
+
+		// 経過秒数を計算
+		double dt = static_cast<double>(nowCount - oldCount) / static_cast<double>(frequency);
+
+		// 異常なスパイクを抑える
+		if (dt > 0.1) dt = 0.1; // 100ms 上限
+
+		// ゲーム処理実行
+		game.Update(static_cast<float>(dt));
+		game.Draw();
+
+		fpsCounter++;
+		oldCount = nowCount;
 
 		// 現在時刻を取得
 		auto currentTime = std::chrono::high_resolution_clock::now();
@@ -302,7 +308,7 @@ LRESULT CALLBACK Application::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 	case WM_CLOSE:  // 「x」ボタンが押されたら
 	{
-		int res = MessageBoxA(NULL, "終了しますか？", "確認", MB_OKCANCEL);
+		int res = MessageBoxW(NULL, L"終了しますか？", L"確認", MB_OKCANCEL);
 		if (res == IDOK) {
 
 			Game::GetInstance().Uninit();

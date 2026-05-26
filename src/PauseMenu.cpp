@@ -22,12 +22,12 @@ void PauseMenu::Init()
     m_CursorRight = std::make_unique<VisualObject>();
     m_CursorRight->Init();
     m_CursorRight->SetTexture("assets/texture/Cursor.png");
-    m_CursorRight->SetScale(150.0f, 100.0f, 1.0f);
+    m_CursorRight->SetScale(-250.0f, 200.0f, 1.0f);
 
     m_CursorLeft = std::make_unique<VisualObject>();
     m_CursorLeft->Init();
     m_CursorLeft->SetTexture("assets/texture/Cursor.png");
-    m_CursorLeft->SetScale(-150.0f, 100.0f, 1.0f);
+    m_CursorLeft->SetScale(250.0f, 200.0f, 1.0f);
 }
 
 void PauseMenu::Uninit()

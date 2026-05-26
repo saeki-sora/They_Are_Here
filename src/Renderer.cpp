@@ -71,6 +71,44 @@ namespace
 // ImGUI_Manager のインスタンス
 //ImGUI_Manager g_ImGuiManager;
 
+// 最高性能のアダプターを選んで返す
+static IDXGIAdapter1* PickBestAdapter()
+{
+    // DXGI 1.6 で HIGH_PERFORMANCE を要求（Optimus/MXM も正しく扱う）
+    IDXGIFactory6* factory6 = nullptr;
+    if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory6))))
+    {
+        IDXGIAdapter1* adapter = nullptr;
+        HRESULT hr = factory6->EnumAdapterByGpuPreference(
+            0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&adapter));
+        factory6->Release();
+        if (SUCCEEDED(hr)) return adapter;
+    }
+
+    // 専用VRAMが最大のアダプターを選ぶ
+    IDXGIFactory1* factory1 = nullptr;
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory1)))) return nullptr;
+
+    IDXGIAdapter1* bestAdapter = nullptr;
+    SIZE_T bestVram = 0;
+    IDXGIAdapter1* adapter = nullptr;
+    for (UINT i = 0; factory1->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
+    {
+        DXGI_ADAPTER_DESC1 desc;
+        adapter->GetDesc1(&desc);
+        if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) { adapter->Release(); continue; }
+        if (desc.DedicatedVideoMemory > bestVram)
+        {
+            if (bestAdapter) bestAdapter->Release();
+            bestAdapter = adapter;
+            bestVram = desc.DedicatedVideoMemory;
+        }
+        else { adapter->Release(); }
+    }
+    factory1->Release();
+    return bestAdapter;
+}
+
 //=======================================
 //初期化処理
 //=======================================
@@ -98,9 +136,11 @@ void Renderer::Init()
     swapChainDesc.SampleDesc.Quality = 0;
     swapChainDesc.Windowed = TRUE;
 
+    // 最高性能GPUを選択（Optimus等でも外付けGPUを優先する）
+    IDXGIAdapter1* bestAdapter = PickBestAdapter();
     hr = D3D11CreateDeviceAndSwapChain(
-        nullptr,
-        D3D_DRIVER_TYPE_HARDWARE,
+        bestAdapter,
+        bestAdapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE,
         nullptr,
         0,
         nullptr,
@@ -111,6 +151,7 @@ void Renderer::Init()
         &m_Device,
         &m_FeatureLevel,
         &m_DeviceContext);
+    if (bestAdapter) bestAdapter->Release();
 
     if (FAILED(hr)) return;
 
@@ -730,7 +771,7 @@ void Renderer::Begin()
 void Renderer::End()
 {
     ImGUI_Manager::Render();
-	m_SwapChain->Present(0, 0);
+	m_SwapChain->Present(1, 0); // VSync 待ちで GPU と同期
 }
 
 //=======================================

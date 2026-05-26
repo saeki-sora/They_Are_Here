@@ -75,7 +75,9 @@ void Enemy::ReloadParams()
 	}
 	catch (std::exception& e)
 	{
+#ifdef _DEBUG
 		std::cout << "[Enemy::ReloadParams] Json読み込み失敗: " << e.what() << std::endl;
+#endif
 	}
 
 	// 視野角のコサイン値を再計算（変更が内積判定に反映されるよう毎回計算する）
@@ -108,7 +110,7 @@ void Enemy::Init()
 {
 	StaticMesh staticmesh;
 
-	std::u8string modelFile = u8"assets/model/enemy/Enemy_Mid.fbx";
+	std::u8string modelFile = u8"assets/model/enemy/Enemy.fbx";
 	std::string texDirectory = "assets/model/enemy";
 
 	std::string tmp(reinterpret_cast<const char*>(modelFile.c_str()), modelFile.size());
@@ -550,35 +552,6 @@ void Enemy::ProcessPath(const std::vector<Vector3>& worldPath)
 
 	// スムージング実行
 	auto smooth = Pathfinder::SmoothPath(worldPath, checkWideLineOfSight);
-
-	//// スムージングが危険なパスを生成していないかチェック
-	//if (smooth.size() >= 2)
-	//{
-	//	for (size_t i = 0; i < smooth.size() - 1; ++i)
-	//	{
-	//		Vector3 sP = smooth[i];
-	//		Vector3 eP = smooth[i + 1];
-	//		Vector3 dir = eP - sP;
-	//		float dist = dir.Length();
-	//		if (dist < 0.001f) continue;
-	//		dir /= dist;
-	//		for (float d = 0; d < dist; d += 0.2f)
-	//		{
-	//			Vector3 p = sP + dir * d;
-	//			GridCoord c = Pathfinder::WorldToGrid(m_Map, p);
-	//			if (m_Map->GetClearance(c.x, c.y) < m_WallMargin * 0.95f)
-	//			{
-	//				static int warnCountSmooth = 0;
-	//				if (warnCountSmooth++ < 10)
-	//				{
-	//					std::cout << "[経路探索調査][スムージング] 危険な経路を許可！ 地点=(" 
-	//						<< p.x << ", " << p.z << ") セル=(" << c.x << ", " << c.y 
-	//						<< ") クリアランス=" << m_Map->GetClearance(c.x, c.y) << " < " << m_WallMargin << "\n";
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
 
 	// 新しく計算した滑らかなルートを、敵が進む道として設定
 	m_Waypoints.clear();
@@ -1093,7 +1066,7 @@ void Enemy::CheckForPlayerCollision()
 		if (this->collider.CheckCollision(player->GetCollider()))
 		{
 			// 接触したら、ゲームオーバー処理
-			player->CanMove(false); // プレイヤーの移動を停止
+			player->SetCanMove(false); // プレイヤーの移動を停止
 			SceneManager::GetInstance().ChangeScene<GameOverScene>(std::make_unique<FadeTransition>(3.0f));
 		}
 	}
@@ -1103,16 +1076,8 @@ void Enemy::CheckForPlayerCollision()
 
 
 // ============================================================
-// プレイヤーが視界内に入っているか判定する
+// プレイヤーが視界内に入っているか判定
 // ------------------------------------------------------------
-// チェック順:
-//   1. プレイヤーが透明中 → false
-//   2. 高さの差が m_DetectionHeightLimit を超える → false
-//   3. 距離が m_DetectionRadius を超える → false
-//   4. 視野角 (FOV) 外 → false
-//   5. 視線上に壁がある (HasLineOfSight) → false
-//   6. すべてパス → true（最終プレイヤー位置を更新）
-// ============================================================
 bool Enemy::CanSeePlayer()
 {
 	if (auto player = m_CachedPlayer.lock())
@@ -1148,8 +1113,6 @@ bool Enemy::CanSeePlayer()
 		if (HasLineOfSight(m_Position, playerPos, 0.0f))
 		{
 			m_LastPlayerPos = playerPos;
-			//std::cout << "!!! プレイヤーみつけた !!!\n";
-
 			return true;//見えたらtrue
 		}
 	}

@@ -32,7 +32,9 @@ bool Texture::Load(const std::string& filename)
     {
         if (!std::ifstream(filename, std::ios::binary).good())
         {
+#ifdef _DEBUG
             std::cout << "[DDS] File not found: " << filename << "\n";
+#endif
             return false;
         }
 
@@ -67,7 +69,9 @@ bool Texture::Load(const std::string& filename)
 
         if (FAILED(hr))
         {
+#ifdef _DEBUG
             std::cout << "[DDS] Load error: " << filename << "\n";
+#endif
             return false;
         }
 
@@ -87,7 +91,9 @@ bool Texture::Load(const std::string& filename)
     unsigned char* pixels = stbi_load(filename.c_str(), &w, &h, &bpp, 4);
     if (!pixels)
     {
+#ifdef _DEBUG
         std::cout << "[STB] Load error: " << filename << "\n";
+#endif
         return false;
     }
     m_width = w;
@@ -146,7 +152,9 @@ bool Texture::LoadFromMemory(const unsigned char* Data, int len) {
         STBI_rgb_alpha);
 
     if (!pixels) {
+#ifdef _DEBUG
         std::cout << "[STB] Load from memory error\n";
+#endif
         return false;
     }
 
@@ -225,7 +233,9 @@ void Texture::SetWidth(int width)
 {
     if (width <= 0)
     {
+#ifdef _DEBUG
         std::cout << "Texture::SetWidth: invalid width (" << width << "), clamping to 1\n";
+#endif
         m_width = 1;
     }
     else
@@ -238,7 +248,9 @@ void Texture::SetHeight(int height)
 {
     if (height <= 0)
     {
+#ifdef _DEBUG
         std::cout << "Texture::SetHeight: invalid height (" << height << "), clamping to 1\n";
+#endif
         m_height = 1;
     }
     else

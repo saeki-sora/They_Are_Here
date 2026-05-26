@@ -200,9 +200,11 @@ void GoalKey::CheckCollisionWithPlayer()
         {
             m_IsObtained = true;
             player->SetHasKey(true);
-            SoundManager::GetInstance().PlaySE("SE_KeyPickup");
+            SoundManager::GetInstance().PlaySE(SoundTag::SE_KeyPickup);
             this->Destroy();
+#ifdef _DEBUG
             std::cout << "Key Obtained! Follow Target Changed to Player." << std::endl;
+#endif
         }
     }
 }

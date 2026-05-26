@@ -10,6 +10,7 @@
 //外部ライブラリ
 #pragma comment(lib,"directxtk.lib")
 #pragma comment(lib,"d3d11.lib")
+#pragma comment(lib,"dxgi.lib")
 
 class Shader;
 class SkinnedModel;

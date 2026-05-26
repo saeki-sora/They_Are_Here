@@ -64,10 +64,10 @@ void Block::Init()
 	switch (m_type)
 	{
 	case BlockType::FarGoal:
-		overrideTexPath = "assets/texture/SpeedAreaBlock.png";
+		overrideTexPath = "assets/model/Block/SpeedAreaBlock.png";
 		break;
 	case BlockType::MidGoal:
-		overrideTexPath = "assets/texture/MidSpeedAreaBlock.png";
+		overrideTexPath = "assets/model/Block/MidSpeedAreaBlock.png";
 		break;
 	default:
 		break;
@@ -102,6 +102,14 @@ void Block::Update(float deltaTime)
 //=======================================
 void Block::Draw()
 {
+	// フラスタムカリング
+	auto camera = Game::GetInstance().GetMainCamera();
+	DirectX::BoundingBox aabb(m_Position, m_Scale);
+	DirectX::BoundingSphere bs;
+	DirectX::BoundingSphere::CreateFromBoundingBox(bs, aabb);
+	if (!camera.GetFrustum().Intersects(bs))
+		return;
+
 	// ワールド行列を計算
 	Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 	Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
@@ -144,6 +152,14 @@ void Block::Draw()
 // シャドウマップ描画
 void Block::DrawShadow()
 {
+	// フラスタムカリング
+	auto camera = Game::GetInstance().GetMainCamera();
+	DirectX::BoundingBox aabb(m_Position, m_Scale * 1.5f);
+	DirectX::BoundingSphere bs;
+	DirectX::BoundingSphere::CreateFromBoundingBox(bs, aabb);
+	if (!camera.GetFrustum().Intersects(bs))
+		return;
+
 	// ワールド行列を計算
 	Matrix r = Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
 	Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);

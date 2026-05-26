@@ -49,6 +49,9 @@ private:
 
 	MakeMap* m_Map = nullptr; // マップグリッド操作用
 
+	// 壁ブロックリストキャッシュ
+	mutable std::vector<std::weak_ptr<Block>> m_CachedBlocks;
+
 	// スタミナ関連
 	float m_Stamina     = 100.0f;  // スタミナ現在値
 	float m_MaxStamina  = 100.0f;  // スタミナ最大値
@@ -101,7 +104,6 @@ public:
 	void SetMouseSensitivity(float sensitivity) { m_MouseSensitivity = sensitivity; }// マウス感度の設定
 	void SetMouseCaptured(bool captured) { m_MouseCaptured = captured; }// マウスキャプチャ状態の設定
 	void SetCanMove(bool canMove) { m_CanMove = canMove; }// 移動可能フラグの設定
-	void CanMove(bool canMove) { m_CanMove = canMove; }// 移動可能フラグの設定
 	void SetHasKey(bool hasKey) { m_HasKey = hasKey; }// カギ所持フラグの設定
 	void SetMaxInvisibleStock(int stock) { m_MaxInvisibleStock = stock; m_InvisibleStock = stock; }// 最大ストック数を設定し、現在ストックも合わせる
 

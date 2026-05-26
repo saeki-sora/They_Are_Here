@@ -110,9 +110,12 @@ bool Player::CheckCollisionWithBlocks(const Vector3& newPosition)
 	SimpleBoxCollider testCollider = collider;
 	testCollider.center = newPosition;
 
-	// ゲームシーン内のすべてのBlockオブジェクトをチェック
-	auto blocks = SceneManager::GetInstance().FindAllObjects<Block>();
-	for (auto& weakBlock : blocks)
+	// ゲームシーン内のすべてのBlockオブジェクトをチェック（キャッシュを使用）
+	if (m_CachedBlocks.empty())
+	{
+		m_CachedBlocks = SceneManager::GetInstance().FindAllObjects<Block>();
+	}
+	for (auto& weakBlock : m_CachedBlocks)
 	{
 		// weak_ptrをshared_ptrに変換してチェック
 		if (auto block = weakBlock.lock())
@@ -351,7 +354,12 @@ void Player::Update(float deltaTime)
 	else
 	{
 		// リリースモードでは当たり判定付き移動
-		auto weakBlocks = SceneManager::GetInstance().FindAllObjects<Block>();
+		// 初回フレームのみ全オブジェクトをスキャンしてキャッシュ
+		if (m_CachedBlocks.empty())
+		{
+			m_CachedBlocks = SceneManager::GetInstance().FindAllObjects<Block>();
+		}
+		const auto& weakBlocks = m_CachedBlocks;
 
 		auto collidesAt = [&](const DirectX::SimpleMath::Vector3& testPos) -> bool {
 			// 壁境界上での偽陽性（接触=衝突扱い）を防ぐため XZ にスキン幅を引く
@@ -487,37 +495,6 @@ void Player::AddInvisibleStock(int amount)
 void Player::Draw()
 {
 
-	//// SRT行列作成
-	//Matrix r = Matrix::CreateRotationY(m_Rotation.y + DirectX::XM_PI); // Y軸回転のみ
-	//Matrix t = Matrix::CreateTranslation(m_Position.x, m_Position.y, m_Position.z);
-	//Matrix s = Matrix::CreateScale(m_Scale.x, m_Scale.y, m_Scale.z);
-
-	//Matrix worldmtx;
-	//worldmtx = s * r * t;
-	//Renderer::SetWorldMatrix(&worldmtx); // GPUにセット
-
-	//m_Shader.SetGPU();
-
-	//// インデックスバッファ・頂点バッファをセット
-	//m_MeshRenderer.BeforeDraw();
-
-	////マテリアル数分ループ
-	//for (int i = 0; i < m_subsets.size(); i++)
-	//{
-	//	// マテリアルをセット(サブセット内にあるマテリアルインデックスを使用)
-	//	m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
-
-
-	//	if (m_Materiales[m_subsets[i].MaterialIdx]->isTextureEnable())
-	//	{
-	//		m_Textures[m_subsets[i].MaterialIdx]->SetGPU();
-	//	}
-
-	//	m_MeshRenderer.DrawSubset(
-	//		m_subsets[i].IndexNum, // 描画するインデックス数
-	//		m_subsets[i].IndexBase, // 最初のインデックスバッファの位置
-	//		m_subsets[i].VertexBase); // 頂点バッファの最初から使用
-	//}
 }
 
 //=======================================
@@ -545,8 +522,12 @@ std::weak_ptr<Block> Player::GetBlockInFront() const
 	}
 	forwardFlat.Normalize();
 
-	// すべてのブロックを取得
-	auto blocks = SceneManager::GetInstance().FindAllObjects<Block>();
+	// キャッシュからブロックリストを取得
+	if (m_CachedBlocks.empty())
+	{
+		m_CachedBlocks = SceneManager::GetInstance().FindAllObjects<Block>();
+	}
+	const auto& blocks = m_CachedBlocks;
 
 	std::weak_ptr<Block> closestBlock;
 	float closestDist = WALL_BREAK_RANGE;
@@ -632,6 +613,17 @@ void Player::TryBreakWall()
 
 	// ブロックオブジェクトを削除
 	block->Destroy();
+
+	// 破壊したブロックをキャッシュから除去
+	m_CachedBlocks.erase(
+		std::remove_if(m_CachedBlocks.begin(), m_CachedBlocks.end(),
+			[](const std::weak_ptr<Block>& w)
+			{
+				auto s = w.lock();
+				return !s || s->IsPendingDestroy();
+			}),
+		m_CachedBlocks.end()
+	);
 
 	//std::cout << "Wall broken at grid (" << gridX << ", " << gridY << ")\n";
 }

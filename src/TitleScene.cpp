@@ -103,7 +103,7 @@ void TitleScene::OnInit()
 		200
 	);
 
-	SoundManager::GetInstance().PlayBGM("BGM_Title", true);
+	SoundManager::GetInstance().PlayBGM(SoundTag::BGM_Title, true);
 }
 
 // 更新
@@ -197,7 +197,7 @@ void TitleScene::BuildMenuItems()
 	m_MenuItems.push_back(MenuItem{
 		"assets/texture/GameStart.png",
 		Vector3(1000.0f, 400.0f, 0.0f),// 位置
-		Vector3(500.0f, 200.0f, 1.0f),// 基本スケール
+		Vector3(400.0f, 200.0f, 1.0f),// 基本スケール
 		[this]()
 		{
 			// 敵に歩行命令
@@ -220,7 +220,7 @@ void TitleScene::BuildMenuItems()
 	m_MenuItems.push_back(MenuItem{
 		"assets/texture/GameEnd.png",
 		Vector3(1000.0f, 300.0f, 0.0f),
-		Vector3(500.0f, 200.0f, 1.0f),
+		Vector3(400.0f, 250.0f, 1.0f),
 		[this]()
 		{
 			HWND hWnd = Application::GetWindow();
@@ -235,7 +235,7 @@ void TitleScene::BuildMenuItems()
 	m_MenuItems.push_back(MenuItem{
 		"assets/texture/TitleLogo.png",
 		Vector3(400.0f, 600.0f, 0.0f),
-		Vector3(900.0f, 500.0f, 1.0f),
+		Vector3(750.0f, 450.0f, 1.0f),
 		nullptr,// ロゴは選択不可
 		false
 	});
@@ -278,7 +278,7 @@ void TitleScene::SpawnMenuObjects()
 	if (auto cursor = cursorWeak.lock())
 	{
 		cursor->SetTexture("assets/texture/Cursor.png");
-		cursor->SetScale(Vector3(150.0f, 100.0f, 1.0f));
+		cursor->SetScale(Vector3(-250.0f, 200.0f, 1.0f));
 		cursor->StartAnim(2.5f); // メニューと一緒に出現
 	}
 
@@ -360,7 +360,7 @@ void TitleScene::UpdateCursor(float deltaTime)
 	const auto& selectedItem = m_MenuItems[m_SelectedIndex];
 
 	//カーソルの位置計算
-	float baseOffsetX = (selectedItem.baseScale.x * 0.5f) + 80.0f;
+	float baseOffsetX = (selectedItem.baseScale.x * 0.5f) + 120.0f;
 	Vector3 targetPos = selectedItem.pos;
 	targetPos.x -= baseOffsetX; // 項目の左側に配置
 

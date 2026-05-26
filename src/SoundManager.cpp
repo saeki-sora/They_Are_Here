@@ -1,133 +1,155 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "SoundManager.h"
 
 
 SoundManager::SoundManager() {}
 
-SoundManager::~SoundManager() 
+SoundManager::~SoundManager()
 {
-    Uninit(); 
+	Uninit();
 }
 
 void SoundManager::Init()
 {
-    AUDIO_ENGINE_FLAGS eflags = AudioEngine_Default;
+	AUDIO_ENGINE_FLAGS eflags = AudioEngine_Default;
 
 #ifdef _DEBUG
-    eflags |= AudioEngine_Debug;
+	eflags |= AudioEngine_Debug;
 #endif
 
-    m_audioEngine = std::make_unique<AudioEngine>(eflags);
+	m_audioEngine = std::make_unique<AudioEngine>(eflags);
 }
 
 
 
 void SoundManager::Uninit()
 {
-    if (m_audioEngine)
-    {
-        m_audioEngine->Suspend();
-    }
-    m_currentBGM.reset();
-    m_soundEffects.clear();
-    m_audioEngine.reset();
+	// オーディオエンジンを一時停止してから全てのサウンドを停止
+	if (m_audioEngine)
+	{
+		m_audioEngine->Suspend();
+	}
+	StopAllBGM();
+	m_soundEffects.clear();
+	m_audioEngine.reset();
 }
+
 
 
 void SoundManager::Update(float deltaTime)
 {
-    if (m_audioEngine)
-    {
-        if (!m_audioEngine->Update())
-        {
-			// オーディオデバイスロスト時の復帰処理をここに追加可能
-        }
-    }
 
-    // BGMフェードアウト処理
-    if (m_IsFadingOut && m_currentBGM)
-    {
-        m_FadeOutElapsed += deltaTime;
-        float t = std::min(m_FadeOutElapsed / m_FadeOutDuration, 1.0f);
-        m_currentBGM->SetVolume(1.0f - t);
-        if (t >= 1.0f)
-        {
-            m_currentBGM->Stop();
-            m_IsFadingOut = false;
-        }
-    }
+	if (m_audioEngine)
+	{
+		m_audioEngine->Update();// オーディオエンジンの更新
+	}
+
+
+	// 各BGMのフェードアウト処理
+	std::vector<SoundTag> completed;
+	for (auto& [tag, fade] : m_fadeStates)
+	{
+		// フェードアウトの進行を更新
+		fade.elapsed += deltaTime;
+		float t = std::min(fade.elapsed / fade.duration, 1.0f);
+		SetBGMVolume(tag, 1.0f - t);
+		if (t >= 1.0f) completed.push_back(tag);
+	}
+
+	// フェードアウトが完了したBGMを停止
+	for (auto& tag : completed)
+	{
+		m_fadeStates.erase(tag);
+		StopBGM(tag);
+	}
+}
+
+
+// サウンドを読み込む
+void SoundManager::LoadSound(SoundTag tag, const wchar_t* filePath)
+{
+	if (m_audioEngine)
+		m_soundEffects[tag] = std::make_unique<SoundEffect>(m_audioEngine.get(), filePath);
+}
+
+
+// SEを再生する
+void SoundManager::PlaySE(SoundTag tag)
+{
+	auto it = m_soundEffects.find(tag);
+	if (it != m_soundEffects.end()) it->second->Play();
 }
 
 
 
-void SoundManager::LoadSound(const std::string& tag, const wchar_t* filePath)
+// BGMを再生する
+void SoundManager::PlayBGM(SoundTag tag, bool loop)
 {
-    if (m_audioEngine) m_soundEffects[tag] = std::make_unique<SoundEffect>(m_audioEngine.get(), filePath);
+	// タグに対応するサウンドが存在するか確認
+	auto it = m_soundEffects.find(tag);
+	if (it == m_soundEffects.end()) return;
+
+	// 同タグが既に再生中なら一度止めてから再生
+	StopBGM(tag);
+
+	// 新しいインスタンスを作成して再生
+	auto inst = it->second->CreateInstance();
+	inst->SetVolume(1.0f);
+	inst->Play(loop);
+	m_activeBGMs[tag] = std::move(inst);
 }
 
 
 
-void SoundManager::PlaySE(const std::string& tag) 
+// BGMを停止する
+void SoundManager::StopBGM(SoundTag tag)
 {
-    if (m_soundEffects.find(tag) != m_soundEffects.end())
-    {
-        m_soundEffects[tag]->Play();
-    }
+	m_fadeStates.erase(tag);
+	auto it = m_activeBGMs.find(tag);
+	if (it == m_activeBGMs.end()) return;
+	it->second->Stop();
+	m_activeBGMs.erase(it);
 }
 
 
 
-void SoundManager::PlayBGM(const std::string& tag, bool loop)
+// 全てのBGMを停止する
+void SoundManager::StopAllBGM()
 {
-    if (m_soundEffects.find(tag) == m_soundEffects.end()) return;
-
-    StopBGM(); // 前のBGMを止める
-
-    m_currentBGM = m_soundEffects[tag]->CreateInstance();
-    m_currentBGM->SetVolume(1.0f);
-    m_currentBGM->Play(loop);
+	m_fadeStates.clear();
+	for (auto& [tag, inst] : m_activeBGMs) inst->Stop();
+	m_activeBGMs.clear();
 }
 
 
 
-void SoundManager::StopBGM()
+// BGMの音量を設定する
+void SoundManager::SetBGMVolume(SoundTag tag, float volume)
 {
-    m_IsFadingOut = false;
-    if (m_currentBGM)
-    {
-        m_currentBGM->Stop();
-        m_currentBGM.reset();
-    }
+	auto it = m_activeBGMs.find(tag);
+	if (it != m_activeBGMs.end()) it->second->SetVolume(volume);
 }
 
 
-
-void SoundManager::FadeBGMOut(float duration)
+// BGMを一時停止する
+void SoundManager::PauseBGM(SoundTag tag)
 {
-    if (!m_currentBGM) return;
-    m_IsFadingOut     = true;
-    m_FadeOutDuration = duration;
-    m_FadeOutElapsed  = 0.0f;
-    m_currentBGM->SetVolume(1.0f);
+	auto it = m_activeBGMs.find(tag);
+	if (it != m_activeBGMs.end()) it->second->Pause();
 }
 
 
-
-void SoundManager::SetBGMVolume(float volume)
+// BGMを再開する
+void SoundManager::ResumeBGM(SoundTag tag)
 {
-    if (m_currentBGM) m_currentBGM->SetVolume(volume);
+	auto it = m_activeBGMs.find(tag);
+	if (it != m_activeBGMs.end()) it->second->Resume();
 }
 
 
-
-void SoundManager::PauseBGM()
+// BGMをフェードアウトする
+void SoundManager::FadeBGMOut(SoundTag tag, float duration)
 {
-    if (m_currentBGM) m_currentBGM->Pause();
-}
-
-
-
-void SoundManager::ResumeBGM()
-{
-    if (m_currentBGM) m_currentBGM->Resume();
+	if (!m_activeBGMs.count(tag)) return;
+	m_fadeStates[tag] = { duration, 0.0f };
 }

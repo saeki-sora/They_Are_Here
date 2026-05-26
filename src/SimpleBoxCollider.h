@@ -40,7 +40,7 @@ public:
 
     DirectX::BoundingBox ToBoundingBox() const
     {
-        // 回転を考慮しない最大内包AABBが必要な場合用 (基本的にOBBへの移行後は使用非推奨)
+        // 回転を考慮しない最大内包AABBが必要な場合用
         return DirectX::BoundingBox(center, size * 0.5f);
     }
 

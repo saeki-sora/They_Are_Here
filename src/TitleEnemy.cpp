@@ -18,7 +18,7 @@ void TitleEnemy::Init()
 {
 	StaticMesh staticmesh;
 
-	std::u8string modelFile = u8"assets/model/enemy/Enemy_Mid.fbx";
+	std::u8string modelFile = u8"assets/model/enemy/Enemy.fbx";
 	std::string texDirectory = "assets/model/enemy";
 
 	std::string tmp(reinterpret_cast<const char*>(modelFile.c_str()), modelFile.size());

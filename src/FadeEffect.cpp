@@ -20,7 +20,9 @@ FadeEffect::FadeEffect(float duration, bool isFadeIn)
 	: m_duration(duration), m_isFadeIn(isFadeIn)
 {
 
+#ifdef _DEBUG
 	std::cout << "[FadeEffect] Constructor called. Address: " << this << std::endl;
+#endif
 	InitResources();
 	m_timer = isFadeIn ? m_duration : 0.0f;// フェードインなら最初は最大、フェードアウトなら最初は0
 }

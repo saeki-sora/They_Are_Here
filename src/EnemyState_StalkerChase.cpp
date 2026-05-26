@@ -17,7 +17,7 @@ void EnemyState_StalkerChase::Enter(Enemy* enemy)
     m_TimeSinceLostSight = 0.0f;
 
 	EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始
-	SoundManager::GetInstance().PlaySE("SE_Found");
+	SoundManager::GetInstance().PlaySE(SoundTag::SE_Found);
 }
 
 void EnemyState_StalkerChase::Update(Enemy* enemy, float deltaTime)

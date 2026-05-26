@@ -287,7 +287,9 @@ std::vector<Vector3> Pathfinder::SmoothPath(const std::vector<Vector3>& path,
 			}
 			else
 			{
+#ifdef _DEBUG
 				std::cout << "[SmoothPath] next=" << next << " で失敗してbreak。current=" << current << "\n";
+#endif
 				break;
 			}
 		}

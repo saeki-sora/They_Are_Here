@@ -14,7 +14,7 @@ void EnemyState_loversChase::Enter(Enemy* enemy)
     m_PathUpdateTimer = 0.0f;
 
 	EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始
-	SoundManager::GetInstance().PlaySE("SE_Found");
+	SoundManager::GetInstance().PlaySE(SoundTag::SE_Found);
 }
 
 

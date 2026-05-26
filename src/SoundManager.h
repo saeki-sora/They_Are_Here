@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 #include <Audio.h>
 #include <map>
-#include <string>
 #include <memory>
+#include "SoundTag.h"
 
 using namespace DirectX;
 
@@ -11,7 +11,7 @@ class SoundManager
 public:
 
     // シングルトン化
-    static SoundManager& GetInstance() 
+    static SoundManager& GetInstance()
     {
         static SoundManager instance;
         return instance;
@@ -21,24 +21,25 @@ public:
     void Uninit();
     void Update(float deltaTime);
 
-    void LoadSound(const std::string& tag, const wchar_t* filePath);
-    void PlaySE(const std::string& tag);
-    void PlayBGM(const std::string& tag, bool loop = true);
-    void StopBGM();
-    void FadeBGMOut(float duration);    // BGMをフェードアウトして停止
-    void SetBGMVolume(float volume);    // BGMの音量を直接設定（0.0〜1.0）
-    void PauseBGM();
-    void ResumeBGM();
+    void LoadSound(SoundTag tag, const wchar_t* filePath);
+    void PlaySE(SoundTag tag);
+
+    void PlayBGM(SoundTag tag, bool loop = true);
+    void StopBGM(SoundTag tag);
+    void StopAllBGM();
+    void SetBGMVolume(SoundTag tag, float volume);
+	void PauseBGM(SoundTag tag);//BGMを一時停止
+	void ResumeBGM(SoundTag tag);//BGMを再開
+    void FadeBGMOut(SoundTag tag, float duration);
 
 private:
     SoundManager();
     ~SoundManager();
 
-    std::unique_ptr<AudioEngine> m_audioEngine;
-    std::map<std::string, std::unique_ptr<SoundEffect>> m_soundEffects;
-    std::unique_ptr<SoundEffectInstance> m_currentBGM;
+    struct BGMFadeState { float duration; float elapsed; };
 
-    bool  m_IsFadingOut    = false; // フェードアウト中フラグ
-    float m_FadeOutDuration = 1.0f; // フェード総時間
-    float m_FadeOutElapsed  = 0.0f; // 経過時間
+    std::unique_ptr<AudioEngine>                                 m_audioEngine;
+    std::map<SoundTag, std::unique_ptr<SoundEffect>>             m_soundEffects;
+    std::map<SoundTag, std::unique_ptr<SoundEffectInstance>>     m_activeBGMs;
+    std::map<SoundTag, BGMFadeState>                             m_fadeStates;
 };

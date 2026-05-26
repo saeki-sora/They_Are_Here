@@ -138,7 +138,7 @@ void Stage1Scene::OnInit()
 	m_UI_Capsule = std::make_unique<VisualObject>();
 	m_UI_Capsule->Init();
 	m_UI_Capsule->SetTexture("assets/texture/InvisibleItemCapsule.png");
-	m_UI_Capsule->SetScale(100.0f, 100.0f, 1.0f);
+	m_UI_Capsule->SetScale(70.0f, 70.0f, 1.0f);
 
 	//カプセルUIの背景
 	m_BuckBord = std::make_unique<VisualObject>();
@@ -324,7 +324,7 @@ void Stage1Scene::OnUpdate(float deltaTime)
 		// フェードイン完了後に一度だけBGMを開始
 		if (!m_BGMStarted && !SceneManager::GetInstance().IsTransitioning())
 		{
-			SoundManager::GetInstance().PlayBGM("BGM_Stage1", true);
+			SoundManager::GetInstance().PlayBGM(SoundTag::BGM_Stage1, true);
 			m_BGMVolume = 1.0f;
 			m_BGMStarted = true;
 		}
@@ -350,25 +350,38 @@ void Stage1Scene::OnUpdate(float deltaTime)
 
 			if (anyChasing)
 			{
-				// Chase開始時に一度だけPause
 				if (!m_IsEnemyChasing)
 				{
-					SoundManager::GetInstance().PauseBGM();
+					// Normal→Chase: 通常BGMをポーズしてチェイスBGMを開始
+					SoundManager::GetInstance().PauseBGM(SoundTag::BGM_Stage1);
+					SoundManager::GetInstance().PlayBGM(SoundTag::BGM_Chase, true);
 					m_IsEnemyChasing = true;
 				}
-				m_BGMResumeTimer = 0.0f;
+
+				// フェードアウト中に再発見 → チェイスBGMを即時フルボリュームに戻す
+				if (m_BGMResumeTimer > 0.0f)
+				{
+					SoundManager::GetInstance().SetBGMVolume(SoundTag::BGM_Chase, 1.0f);
+					m_BGMResumeTimer = 0.0f;
+				}
 			}
 			else
 			{
-				// 追跡解除後、BGM_RESUME_DELAY 秒経過でResume
 				if (m_IsEnemyChasing)
 				{
+					// 追跡解除後、BGM_RESUME_DELAY 秒かけてチェイスBGMをフェードアウト
 					m_BGMResumeTimer += deltaTime;
-					if (m_BGMResumeTimer >= BGM_RESUME_DELAY)
+					float t = std::min(m_BGMResumeTimer / BGM_RESUME_DELAY, 1.0f);
+					if (t >= 1.0f)
 					{
-						SoundManager::GetInstance().ResumeBGM();
+						SoundManager::GetInstance().StopBGM(SoundTag::BGM_Chase);
+						SoundManager::GetInstance().ResumeBGM(SoundTag::BGM_Stage1);
 						m_IsEnemyChasing = false;
 						m_BGMResumeTimer = 0.0f;
+					}
+					else
+					{
+						SoundManager::GetInstance().SetBGMVolume(SoundTag::BGM_Chase, 1.0f - t);
 					}
 				}
 				else
@@ -379,7 +392,7 @@ void Stage1Scene::OnUpdate(float deltaTime)
 						0.0f, 1.0f);
 					float targetVolume = BGM_MIN_VOLUME + (1.0f - BGM_MIN_VOLUME) * t;
 					m_BGMVolume += (targetVolume - m_BGMVolume) * std::min(BGM_LERP_SPEED * deltaTime, 1.0f);
-					SoundManager::GetInstance().SetBGMVolume(m_BGMVolume);
+					SoundManager::GetInstance().SetBGMVolume(SoundTag::BGM_Stage1, m_BGMVolume);
 				}
 			}
 		}
@@ -493,9 +506,9 @@ void Stage1Scene::OnDrawUI()
 		int maxStock = player->GetMaxInvisibleStock();  // プレイヤーから最大値を取得
 
 		// 画面上の表示位置
-		float startX = -500.0f;
-		float startY = -250.0f;
-		float gapX = 60.0f;
+		float startX = 500.0f;
+		float startY = -220.0f;
+		float gapX = 60.0f;// ストックアイコン同士の間隔
 
 		// 背景の位置とサイズを計算
 		float totalWidth = (maxStock - 1) * gapX;
@@ -505,7 +518,7 @@ void Stage1Scene::OnDrawUI()
 
 		// 背景の位置とサイズを適用
 		m_BuckBord->SetPosition(bgCenterX, startY, 0.0f);
-		m_BuckBord->SetScale(bgScaleX, 150.0f, 1.0f);
+		m_BuckBord->SetScale(bgScaleX, 100.0f, 1.0f);
 
 		// 背景を描画
 		m_BuckBord->Draw();
@@ -524,8 +537,8 @@ void Stage1Scene::OnDrawUI()
 		float ratio = player->GetStamina() / player->GetMaxStamina();
 		float maxWidth = 200.0f;
 		float barHeight = 20.0f;
-		float barX = 400.0f;   // 画面右側
-		float barY = -300.0f;  // 画面下側
+		float barX = 430.0f;   // 画面右側
+		float barY = -330.0f;  // 画面下側
 
 		// 背景（黒帯、フルサイズ）
 		m_StaminaGaugeBG->SetPosition(barX, barY, 0.0f);
@@ -570,7 +583,7 @@ void Stage1Scene::OnDrawOverlayUI()
 // 終了処理
 void Stage1Scene::OnUnload()
 {
-	SoundManager::GetInstance().StopBGM();
+	SoundManager::GetInstance().StopAllBGM();
 
 	// ミニマップを個別管理しているため、手動で Uninit を呼ぶ
 	if (m_MiniMap)

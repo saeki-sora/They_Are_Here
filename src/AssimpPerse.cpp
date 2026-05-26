@@ -445,7 +445,9 @@ namespace AssimpPerse
 
 			// マテリアル名取得
 			std::string mtrlname = material->GetName().C_Str();
+#ifdef _DEBUG
 			std::cout << mtrlname << std::endl;
+#endif
 
 			// マテリアル情報
 			aiColor4D ambient(0.0f, 0.0f, 0.0f, 0.0f);
@@ -502,7 +504,9 @@ namespace AssimpPerse
 						// ファイルがまだ存在しない場合のみ、データを書き込む
 						if (!std::filesystem::exists(newFullPath))
 						{
-							std::cout << "Extracting embedded texture: " << newFullPathStr << std::endl;
+	#ifdef _DEBUG
+						std::cout << "Extracting embedded texture: " << newFullPathStr << std::endl;
+#endif
 							std::ofstream ofs(newFullPath, std::ios::binary);
 							if (ofs)
 							{
@@ -540,7 +544,9 @@ namespace AssimpPerse
 				texture = TextureManager::GetInstance().Load(texturePathToLoad);
 				if (!texture)
 				{
+#ifdef _DEBUG
 					std::cout << "TextureManager failed to load: " << texturePathToLoad << std::endl;
+#endif
 					// 失敗した場合でもデフォルトテクスチャをロード
 					texture = TextureManager::GetInstance().Load("");
 				}
@@ -590,7 +596,9 @@ namespace AssimpPerse
 
 		if (pScene == nullptr)
 		{
+#ifdef _DEBUG
 			std::cout << "load error" << filename.c_str() << importer.GetErrorString() << std::endl;
+#endif
 		}
 		assert(pScene != nullptr);
 
@@ -704,8 +712,10 @@ namespace AssimpPerse
 
 		if (!pScene)
 		{
+#ifdef _DEBUG
 			std::cout << "load error (skinned): " << filename
 				<< " : " << importer.GetErrorString() << std::endl;
+#endif
 			assert(pScene && "Assimp load failed in GetModelDataSkinned");
 			return;
 		}

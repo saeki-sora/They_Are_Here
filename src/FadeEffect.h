@@ -20,7 +20,9 @@ public:
 	virtual ~FadeEffect()
 	{
 		// デストラクタが呼ばれたことを出力
+#ifdef _DEBUG
 		std::cout << "[FadeEffect] Destructor called. Address: " << this << std::endl;
+#endif
 	}
 
 	void Update(float deltaTime) override;

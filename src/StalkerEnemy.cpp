@@ -15,11 +15,12 @@ void StalkerEnemy::Init()
     m_SearchSpeed = 20.0f;  // 探索も遅い
     m_CurrentMaxSpeed = m_SearchSpeed;
     m_ArriveRadius = 10.0f;
+
     // ライトを青色に設定
     m_SpotLightColor = DirectX::SimpleMath::Color(0.0f, 0.0f, 1.0f, 1.0f);
 
-    // 旋回速度を遅くする（デフォルト320度 -> 120度）
-    m_MaxAngVel = DirectX::XMConvertToRadians(120.0f);
+    // 旋回速度を遅くする
+    m_MaxAngVel = DirectX::XMConvertToRadians(100.0f);
 
     m_IsLockedOn = false;
 }

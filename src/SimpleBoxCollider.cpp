@@ -30,7 +30,9 @@ bool SimpleBoxCollider::CheckCollision(const SimpleBoxCollider& other) const
 // デバッグ用のコライダービジュアルを描画する関数の初期化
 void SimpleBoxCollider::InitDebugDraw(ID3D11Device* device, ID3D11DeviceContext* ctx)
 {
+#ifdef _DEBUG
 	std::cout << "SimpleBoxCollider::InitDebugDraw()" << std::endl;
+#endif
 	if (m_initialized) return; // 既に初期化済みなら何もしない
 
 	m_Batch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(ctx);
@@ -54,7 +56,9 @@ void SimpleBoxCollider::InitDebugDraw(ID3D11Device* device, ID3D11DeviceContext*
 	if (SUCCEEDED(hr)) {
 		m_InputLayout = il;
 
+#ifdef _DEBUG
 		std::cout << "SimpleBoxColliderの初期化:成功" << std::endl;
+#endif
 	}
 	else {
 		std::cerr << "SimpleBoxColliderの初期化:失敗" << std::endl;
