@@ -51,6 +51,7 @@ cbuffer LightBuffer : register(b3)
 {
     LIGHT Light;
     DYNAMIC_LIGHT PointLights[MAX_POINT_LIGHTS];
+    float4 RenderParams; // x:ノーマルマップ強度 yzw:未使用
 };
 
 struct MATERIAL

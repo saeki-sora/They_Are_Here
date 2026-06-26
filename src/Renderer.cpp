@@ -5,6 +5,7 @@
 #include"ImGUI_Manager.h"
 #include"Shader.h"
 #include "SkinnedMesh.h"
+#include "PostProcessManager.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -17,6 +18,7 @@ IDXGISwapChain* Renderer::m_SwapChain{}; // スワップチェーン
 ID3D11RenderTargetView* Renderer::m_RenderTargetView{}; // レンダーターゲットビュー
 ID3D11RenderTargetView* Renderer::m_RenderTargetView_Mirror{}; //鏡用のレンダーターゲット
 ID3D11DepthStencilView* Renderer::m_DepthStencilView{}; // デプスステンシルビュー
+ID3D11ShaderResourceView* Renderer::m_DepthSRV{}; // 深度バッファのSRV（ポストプロセス用）
 
 ID3D11Buffer* Renderer::m_WorldBuffer{}; // ワールド行列
 ID3D11Buffer* Renderer::m_WorldInverseTransposeBuffer{}; // ワールド逆転置行列
@@ -180,15 +182,16 @@ void Renderer::Init()
     // ------------------------------------
     ID3D11Texture2D* depthStencilTex = nullptr;
 
+    // ポストプロセスで深度を読めるよう TYPELESS で作成し、DSVとSRVを両方作る
     D3D11_TEXTURE2D_DESC depthDesc{};
     depthDesc.Width = width;
     depthDesc.Height = height;
     depthDesc.MipLevels = 1;
     depthDesc.ArraySize = 1;
-    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    depthDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
     depthDesc.SampleDesc = swapChainDesc.SampleDesc;
     depthDesc.Usage = D3D11_USAGE_DEFAULT;
-    depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
     depthDesc.CPUAccessFlags = 0;
     depthDesc.MiscFlags = 0;
 
@@ -197,12 +200,22 @@ void Renderer::Init()
     if (FAILED(hr) || !depthStencilTex) return;
 
     D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-    dsvDesc.Format = depthDesc.Format;
+    dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
     dsvDesc.Flags = 0;
 
     hr = m_Device->CreateDepthStencilView(
         depthStencilTex, &dsvDesc, &m_DepthStencilView);
+    if (FAILED(hr)) { depthStencilTex->Release(); return; }
+
+    // 深度SRV（24bit深度部分のみ読む）
+    D3D11_SHADER_RESOURCE_VIEW_DESC depthSrvDesc{};
+    depthSrvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+    depthSrvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    depthSrvDesc.Texture2D.MipLevels = 1;
+
+    hr = m_Device->CreateShaderResourceView(
+        depthStencilTex, &depthSrvDesc, &m_DepthSRV);
     depthStencilTex->Release();
     if (FAILED(hr)) return;
 
@@ -378,6 +391,7 @@ void Renderer::Init()
     light.Direction.Normalize();
     light.Diffuse = Color(0.55f, 0.62f, 0.85f, 1.0f);
     light.Ambient = Color(0.55f, 0.36f, 0.59f, 1.0f);
+    m_LightData.RenderParams = Vector4(1.0f, 0.0f, 0.0f, 0.0f); // ノーマルマップ強度のデフォルト
     SetLight(light);
 
     // Material
@@ -400,11 +414,11 @@ void Renderer::Init()
 
     SetUV(0, 0, 1, 1);
 
-    // シャドウマップ用テクスチャ作成 (2048x2048)
+    // シャドウマップ用テクスチャ作成
     {
         D3D11_TEXTURE2D_DESC sdesc{};
-        sdesc.Width              = 2048;
-        sdesc.Height             = 2048;
+        sdesc.Width              = SHADOW_MAP_SIZE;
+        sdesc.Height             = SHADOW_MAP_SIZE;
         sdesc.MipLevels          = 1;
         sdesc.ArraySize          = 1;
         sdesc.Format             = DXGI_FORMAT_R32_TYPELESS;
@@ -563,7 +577,7 @@ void Renderer::Draw(const SkinnedModel& model, const Matrix& world)
 	for (auto& sub : mesh.GetSubsets())
 	{
 		auto tex = mesh.GetTextures()[sub.MaterialIdx];
-		m_DeviceContext->PSSetShaderResources(0, 1, tex->GetSRVAddress());
+		tex->SetGPU(); // アルベド(t0)とノーマルマップ(t2)をバインド
 
 		m_DeviceContext->DrawIndexed(sub.IndexNum, sub.IndexBase, 0);
 	}
@@ -619,6 +633,7 @@ void Renderer::Uninit()
 	m_MaterialBuffer->Release();
 
 	m_DeviceContext->ClearState();
+	if (m_DepthSRV) { m_DepthSRV->Release(); m_DepthSRV = nullptr; }
 	m_RenderTargetView->Release();
 	m_SwapChain->Release();
 	m_DeviceContext->Release();
@@ -646,14 +661,24 @@ void Renderer::Uninit()
 }
 
 // シャドウパス開始
-void Renderer::BeginShadowPass()
+void Renderer::BeginShadowPass(const Vector3& focus)
 {
     // ライト視点の行列を計算
     Vector3 lightDir = Vector3(0.5f, -1.3f, 0.8f);
     lightDir.Normalize();
-    Vector3 lightEye = -lightDir * 3000.0f;
-    Matrix lightView = Matrix::CreateLookAt(lightEye, Vector3::Zero, Vector3::Up);
-    Matrix lightProj = Matrix::CreateOrthographic(5000.0f, 5000.0f, 1.0f, 6000.0f);
+
+    // 注視点をライト空間でテクセル単位にスナップしてシマー（ちらつき）を防ぐ
+    Matrix lightRot = Matrix::CreateLookAt(-lightDir, Vector3::Zero, Vector3::Up);
+    Vector3 focusLS = Vector3::Transform(focus, lightRot);
+    const float texelSize = SHADOW_ORTHO_SIZE / static_cast<float>(SHADOW_MAP_SIZE);
+    focusLS.x = floorf(focusLS.x / texelSize) * texelSize;
+    focusLS.y = floorf(focusLS.y / texelSize) * texelSize;
+    Vector3 snappedFocus = Vector3::Transform(focusLS, lightRot.Invert());
+
+    // 注視点を中心にした追従正射影（範囲を絞ってテクセル密度を上げる）
+    Vector3 lightEye = snappedFocus - lightDir * 3000.0f;
+    Matrix lightView = Matrix::CreateLookAt(lightEye, snappedFocus, Vector3::Up);
+    Matrix lightProj = Matrix::CreateOrthographic(SHADOW_ORTHO_SIZE, SHADOW_ORTHO_SIZE, 1.0f, 6000.0f);
     Matrix lightViewProj = (lightView * lightProj).Transpose();
 
     // シャドウ定数バッファ更新 (b8)
@@ -667,8 +692,8 @@ void Renderer::BeginShadowPass()
 
     // シャドウ用ビューポート設定
     D3D11_VIEWPORT vp{};
-    vp.Width    = 2048.0f;
-    vp.Height   = 2048.0f;
+    vp.Width    = static_cast<float>(SHADOW_MAP_SIZE);
+    vp.Height   = static_cast<float>(SHADOW_MAP_SIZE);
     vp.MinDepth = 0.0f;
     vp.MaxDepth = 1.0f;
     m_DeviceContext->RSSetViewports(1, &vp);
@@ -748,7 +773,14 @@ void Renderer::DrawShadow(const SkinnedModel& model, const Matrix& world)
 //=======================================
 void Renderer::Begin()
 {
-	m_DeviceContext->OMSetRenderTargets(1, &m_RenderTargetView, m_DepthStencilView);
+	// ポストプロセス有効時はHDRシーンRTへ、無効時は従来どおりバックバッファへ描画する
+	ID3D11RenderTargetView* sceneRTV = m_RenderTargetView;
+	auto& postProcess = PostProcessManager::GetInstance();
+	if (postProcess.IsEnabled() && postProcess.GetSceneRTV())
+	{
+		sceneRTV = postProcess.GetSceneRTV();
+	}
+	m_DeviceContext->OMSetRenderTargets(1, &sceneRTV, m_DepthStencilView);
 
 	// 既定は不透明
 	float blendFactor[4] = { 0,0,0,0 };
@@ -756,7 +788,7 @@ void Renderer::Begin()
 
 	// 背景を黒に
 	const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	m_DeviceContext->ClearRenderTargetView(m_RenderTargetView, clearColor);
+	m_DeviceContext->ClearRenderTargetView(sceneRTV, clearColor);
 	m_DeviceContext->ClearDepthStencilView(m_DepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
     m_DeviceContext->PSSetSamplers(0, 1, &m_SamplerState);
@@ -895,6 +927,19 @@ void Renderer::SetLight(LIGHT light)
 {
     m_LightData.GlobalLight = light;
     PushLightBuffer();
+}
+
+//=======================================
+// ノーマルマップ強度の設定・取得
+//=======================================
+void Renderer::SetNormalMapStrength(float strength)
+{
+    m_LightData.RenderParams.x = strength;
+}
+
+float Renderer::GetNormalMapStrength()
+{
+    return m_LightData.RenderParams.x;
 }
 
 //=======================================
