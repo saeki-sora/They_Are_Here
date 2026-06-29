@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Enterprise/MSBuild/Current/Bin/MSBuild.exe\":*)",
+      "Bash(cmd:*)",
+      "Bash(powershell:*)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe\":*)",
+      "Bash(\"$MSBUILD\":*)",
+      "Bash(\"$MSBUILD_PATH\" $SLN_PATH:*)",
+      "Bash(/tmp/MSBuild.exe:*)",
+      "Bash(wslpath:*)",
+      "Bash(echo Windows:*)",
+      "Bash(/tmp/build2.bat:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(/tmp/add_bom.ps1:*)",
+      "Bash(/tmp/add_bom2.ps1:*)",
+      "Bash(wmic logicaldisk:*)",
+      "Bash(echo:*)"
+    ]
+  }
+}

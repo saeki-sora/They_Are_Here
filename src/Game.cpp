@@ -14,6 +14,7 @@
 #include"SoundManager.h"
 #include "DebugManager.h"
 #include "ImGUI_Manager.h"
+#include "PostProcessManager.h"
 
 // コンストラクタ
 Game::Game()
@@ -39,6 +40,7 @@ Game& Game::GetInstance()
 void Game::Init()
 {
 	Renderer::Init();// 描画初期化
+	PostProcessManager::GetInstance().Init();// ポストプロセス初期化
 	m_MainCamera->Init();// カメラ初期化
 
 	SceneManager::GetInstance().Init();
@@ -73,6 +75,7 @@ void Game::Update(float deltaTime)
 	DebugManager::GetInstance().Update(deltaTime);// チェックマネージャー更新
 	EffectManager::GetInstance().Update(deltaTime);//エフェクト更新
 	SoundManager::GetInstance().Update(deltaTime);//サウンドマネージャー更新
+	PostProcessManager::GetInstance().Update(deltaTime);//ポストプロセス更新
 
 	SceneManager::GetInstance().Update(deltaTime);
 
@@ -86,8 +89,8 @@ void Game::Draw()
 	ImGUI_Manager::BeginFrame();
 
 	// 描画前の処理
-	// シャドウパス
-	Renderer::BeginShadowPass();
+	// シャドウパス（カメラ位置を中心に影を生成する）
+	Renderer::BeginShadowPass(m_MainCamera->GetPosition());
 	SceneManager::GetInstance().DrawShadow();
 	Renderer::EndShadowPass();
 
@@ -96,6 +99,9 @@ void Game::Draw()
 
 	// ===== 3D描画パス =====
 	SceneManager::GetInstance().Draw();
+
+	// ポストプロセス実行（HDRシーン → ブルーム/SSAO/トーンマップ等 → バックバッファ）
+	PostProcessManager::GetInstance().Execute();
 
 	// ===== 2D描画パス =====
 	SceneManager::GetInstance().DrawUI();
@@ -119,6 +125,7 @@ void Game::Uninit()
 	// 描画終了処理
 	ImGUI_Manager::Uninit();
 
+	PostProcessManager::GetInstance().Uninit();//ポストプロセス終了処理
 	Renderer::Uninit();
 
 	SceneManager::GetInstance().Uninit();

@@ -108,6 +108,9 @@
     <ClCompile Include="Renderer.cpp">
       <Filter>ソース ファイル\DX</Filter>
     </ClCompile>
+    <ClCompile Include="PostProcessManager.cpp">
+      <Filter>ソース ファイル\DX</Filter>
+    </ClCompile>
     <ClCompile Include="Shader.cpp">
       <Filter>ソース ファイル\DX</Filter>
     </ClCompile>
@@ -389,6 +392,9 @@
     <ClInclude Include="Renderer.h">
       <Filter>ヘッダー ファイル\DX</Filter>
     </ClInclude>
+    <ClInclude Include="PostProcessManager.h">
+      <Filter>ヘッダー ファイル\DX</Filter>
+    </ClInclude>
     <ClInclude Include="Shader.h">
       <Filter>ヘッダー ファイル\DX</Filter>
     </ClInclude>
@@ -634,6 +640,36 @@
     <FxCompile Include="shader\shadowVS.hlsl" />
     <FxCompile Include="shader\shadowPS.hlsl" />
     <FxCompile Include="shader\shadowSkinnedVS.hlsl" />
+    <FxCompile Include="shader\postCommon.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\FullScreenVS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\BrightExtractPS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\DownsamplePS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\GaussBlurPS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\SSAOPS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\BilateralBlurPS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\VolumetricPS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\CompositePS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\FXAAPS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="json\enemy_param.json" />

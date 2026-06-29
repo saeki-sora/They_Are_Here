@@ -76,6 +76,7 @@ struct LIGHT_CONSTANT_BUFFER
 {
 	LIGHT GlobalLight; // 既存の平行光源
 	DYNAMIC_LIGHT_DATA Lights[MAX_POINT_LIGHTS]; // 点光源配列
+	DirectX::SimpleMath::Vector4 RenderParams; // x:ノーマルマップ強度 yzw:未使用
 };
 
 //メッシュ
@@ -120,6 +121,7 @@ private:
 	static ID3D11RenderTargetView* m_RenderTargetView_Mirror;//レンダーターゲットビュー
 
 	static ID3D11DepthStencilView* m_DepthStencilView;//深度ステンシルビュー
+	static ID3D11ShaderResourceView* m_DepthSRV;//深度バッファのSRV（ポストプロセス用）
 
 	static ID3D11Buffer* m_WorldBuffer;//ワールド行列
 	static ID3D11Buffer* m_WorldInverseTransposeBuffer;//ワールド逆転置行列
@@ -172,8 +174,13 @@ public:
 	static void Begin();
 	static void End();
 
-	// シャドウパス
-	static void BeginShadowPass();
+	// シャドウマップ解像度
+	static constexpr int SHADOW_MAP_SIZE = 4096;
+	// シャドウ用正射影の幅・高さ
+	static constexpr float SHADOW_ORTHO_SIZE = 2500.0f;
+
+	// シャドウパス（focus: 影の中心にする注視点。通常はカメラ位置）
+	static void BeginShadowPass(const DirectX::SimpleMath::Vector3& focus = DirectX::SimpleMath::Vector3::Zero);
 	static void EndShadowPass();
 	static void SetShadowStaticShader();
 	static void SetShadowSkinnedShader();
@@ -197,6 +204,8 @@ public:
 	static DirectX::SimpleMath::Matrix GetProjectionMatrix(){ return m_ProjectionMatrix; }
 	static ID3D11DepthStencilView* GetDepthStencilView() { return m_DepthStencilView; }
 	static ID3D11RenderTargetView* GetRenderTargetView() { return m_RenderTargetView; }
+	static ID3D11ShaderResourceView* GetDepthSRV() { return m_DepthSRV; }
+	static const LIGHT_CONSTANT_BUFFER& GetLightData() { return m_LightData; }
 	static ID3D11Buffer* GetWorldBuffer() { return m_WorldBuffer; }
 	static ID3D11Buffer* GetViewBuffer() { return m_ViewBuffer; }
 	static ID3D11Buffer* GetProjectionBuffer() { return m_ProjectionBuffer; }
@@ -208,6 +217,10 @@ public:
 	static void SetLight(LIGHT Light);
 	static void SetMaterial(MATERIAL Material);
 	static void SetUV(float u, float v, float uw, float vh);
+
+	// ノーマルマップ強度の設定・取得
+	static void SetNormalMapStrength(float strength);
+	static float GetNormalMapStrength();
 
 	static void BindVS(ID3D11VertexShader* vs);// シェーダーのバインド
 	static void BindPS(ID3D11PixelShader* ps);

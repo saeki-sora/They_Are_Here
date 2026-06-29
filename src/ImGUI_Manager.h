@@ -24,6 +24,7 @@ private:
 
 	static void DrawEnemyParamPanel();// 敵のパラメータを表示するパネル
 	static void DrawFSMPanel();// 敵のFSMを表示するパネル
+	static void DrawGraphicsPanel();// グラフィック設定を表示するパネル
 
 	// FSMグラフを描画
     static void DrawFSMGraph(const std::string& currentState);

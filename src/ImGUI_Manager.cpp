@@ -4,6 +4,7 @@
 #include "SceneManager.h"
 #include "Enemy.h"
 #include "EnemyDebugData.h"
+#include "PostProcessManager.h"
 
 bool ImGUI_Manager::s_Initialized     = false;
 bool ImGUI_Manager::s_Visible         = false;
@@ -56,6 +57,17 @@ void ImGUI_Manager::DrawPanels()
 
     DrawEnemyParamPanel();
     DrawFSMPanel();
+    DrawGraphicsPanel();
+}
+
+// ============================================================
+// グラフィック設定パネルを描画
+// ============================================================
+void ImGUI_Manager::DrawGraphicsPanel()
+{
+    ImGui::Begin("Graphics");
+    PostProcessManager::GetInstance().DrawImGui();
+    ImGui::End();
 }
 
 // ============================================================

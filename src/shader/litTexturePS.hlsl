@@ -8,10 +8,70 @@ SamplerState g_SamplerState : register(s0);
 Texture2D g_ShadowMap : register(t1);
 SamplerComparisonState g_ShadowSampler : register(s1);
 
+// ノーマルマップ
+Texture2D g_NormalMap : register(t2);
+
+// シャドウマップ解像度（C++側 Renderer::SHADOW_MAP_SIZE と合わせる）
+static const float SHADOW_MAP_SIZE = 4096.0f;
+// PCFのサンプル広がり（テクセル単位）
+static const float PCF_FILTER_RADIUS = 2.0f;
+// PCFのサンプル数
+static const int PCF_SAMPLE_COUNT = 12;
+
+// Poisson Disk サンプルパターン
+static const float2 POISSON_DISK[12] =
+{
+    float2(-0.326f, -0.406f), float2(-0.840f, -0.074f),
+    float2(-0.696f,  0.457f), float2(-0.203f,  0.621f),
+    float2( 0.962f, -0.195f), float2( 0.473f, -0.480f),
+    float2( 0.519f,  0.767f), float2( 0.185f, -0.893f),
+    float2( 0.507f,  0.064f), float2( 0.896f,  0.412f),
+    float2(-0.322f, -0.933f), float2(-0.792f, -0.598f)
+};
+
+// ピクセル位置ベースの疑似乱数（PCFのサンプル回転用）
+float ShadowNoise(float2 pixelPos)
+{
+    const float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
+    return frac(magic.z * frac(dot(pixelPos, magic.xy)));
+}
+
+// ノーマルマップで法線を変換する（Schüler法・タンジェント属性不要）
+float3 PerturbNormal(float3 N, float3 viewVec, float2 uv)
+{
+    float3 mapN = g_NormalMap.Sample(g_SamplerState, uv).xyz * 2.0f - 1.0f;
+    // 強度で凹凸の傾きを調整する
+    mapN.xy *= RenderParams.x;
+
+    // スクリーン空間微分からコタンジェントフレームを再構成する
+    float3 dp1 = ddx(viewVec);
+    float3 dp2 = ddy(viewVec);
+    float2 duv1 = ddx(uv);
+    float2 duv2 = ddy(uv);
+
+    float3 dp2perp = cross(dp2, N);
+    float3 dp1perp = cross(N, dp1);
+    float3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+    float3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+
+    float invmax = rsqrt(max(max(dot(T, T), dot(B, B)), 1e-10f));
+    float3x3 TBN = float3x3(T * invmax, B * invmax, N);
+
+    return normalize(mul(mapN, TBN));
+}
+
 float4 ps_main(in PS_IN input) : SV_Target
 {
     // 法線の正規化
     float3 N = normalize(input.normal);
+
+    // ノーマルマップ適用（テクスチャ付きマテリアルのみ）
+    // テクスチャ無しマテリアルは t2 をバインドしないため、サンプルすると
+    // 直前に描いたオブジェクトの古いノーマルマップが残りちらつく。頂点法線のままにする
+    if (RenderParams.x > 0.0f && Material.TextureEnable)
+    {
+        N = PerturbNormal(N, input.worldPos.xyz - Light.CameraPos.xyz, input.tex);
+    }
 
     // テクスチャカラー取得
     float4 textureColor = float4(1, 1, 1, 1);
@@ -29,6 +89,10 @@ float4 ps_main(in PS_IN input) : SV_Target
     // 視線ベクトル
     float3 ViewDir = normalize(Light.CameraPos - input.worldPos.xyz);
 
+    // 鏡面光沢度。0 のままだと dot(N,H)<=0 の角度で pow(0,0)=NaN となり、
+    // HDR+ブルームで黒い面が広範囲に広がるため下限を設ける
+    float specPower = max(Material.Shininess, 1e-3f);
+
     // 平行光源
     if (Light.Enable)
     {
@@ -41,7 +105,7 @@ float4 ps_main(in PS_IN input) : SV_Target
         if (d > 0.0f)
         {
             float3 H = normalize(L + ViewDir);
-            float spec = pow(saturate(dot(N, H)), Material.Shininess);
+            float spec = pow(saturate(dot(N, H)), specPower);
             totalSpecular += spec * Material.Specular.rgb * Light.Diffuse.rgb;
         }
     }
@@ -92,7 +156,7 @@ float4 ps_main(in PS_IN input) : SV_Target
                     if (d > 0.0f)
                     {
                         float3 H = normalize(L + ViewDir);
-                        float spec = pow(saturate(dot(N, H)), Material.Shininess);
+                        float spec = pow(saturate(dot(N, H)), specPower);
                         spotSpecular += spec * atten * Material.Specular.rgb * PointLights[i].Color.rgb * lightIntensity;
                     }
                 }
@@ -118,21 +182,24 @@ float4 ps_main(in PS_IN input) : SV_Target
             shadowUV.y >= 0.0f && shadowUV.y <= 1.0f)
         {
             float depth = projCoords.z - 0.0003f;  // シャドウアクネ防止バイアス
-            float texelSize = 1.0f / 2048.0f;
+            float texelSize = 1.0f / SHADOW_MAP_SIZE;
 
-            // PCF 3x3 サンプリング
+            // ピクセル毎にサンプルパターンを回転させてバンディングを消す
+            float angle = ShadowNoise(input.pos.xy) * 6.2831853f;
+            float sinR, cosR;
+            sincos(angle, sinR, cosR);
+
+            // Poisson Disk PCF サンプリング
             shadow = 0.0f;
             [unroll]
-            for (int dx = -1; dx <= 1; ++dx)
+            for (int i = 0; i < PCF_SAMPLE_COUNT; ++i)
             {
-                [unroll]
-                for (int dy = -1; dy <= 1; ++dy)
-                {
-                    float2 offset = float2(dx, dy) * texelSize;
-                    shadow += g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, shadowUV + offset, depth);
-                }
+                float2 p = POISSON_DISK[i];
+                float2 rotated = float2(p.x * cosR - p.y * sinR, p.x * sinR + p.y * cosR);
+                float2 offset = rotated * texelSize * PCF_FILTER_RADIUS;
+                shadow += g_ShadowMap.SampleCmpLevelZero(g_ShadowSampler, shadowUV + offset, depth);
             }
-            shadow /= 9.0f;
+            shadow /= PCF_SAMPLE_COUNT;
         }
     }
 

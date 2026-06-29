@@ -4,6 +4,50 @@
 #include "stb_image.h"
 #include "DDSTextureLoader.h"
 
+ComPtr<ID3D11ShaderResourceView> Texture::s_FlatNormalSrv{}; // 平坦ノーマルマップ（共有）
+
+namespace
+{
+	// 自動生成ノーマルマップの凹凸の強さ
+	constexpr float NORMAL_GEN_STRENGTH = 2.0f;
+
+	// RGBA8ピクセル配列からミップマップ付きSRVを作成する
+	bool CreateSRVFromPixels(const unsigned char* pixels, int width, int height,
+		ComPtr<ID3D11ShaderResourceView>& outSrv)
+	{
+		ID3D11Device* device = Renderer::GetDevice();
+		ID3D11DeviceContext* ctx = Renderer::GetDeviceContext();
+		if (!device || !ctx) return false;
+
+		ComPtr<ID3D11Texture2D> tex;
+		D3D11_TEXTURE2D_DESC desc{};
+		desc.Width = width;
+		desc.Height = height;
+		desc.MipLevels = 0;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+		HRESULT hr = device->CreateTexture2D(&desc, nullptr, tex.GetAddressOf());
+		if (FAILED(hr)) return false;
+
+		ctx->UpdateSubresource(tex.Get(), 0, nullptr, pixels, width * 4, 0);
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+		srvDesc.Format = desc.Format;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = -1;
+		hr = device->CreateShaderResourceView(tex.Get(), &srvDesc, outSrv.GetAddressOf());
+		if (FAILED(hr)) return false;
+
+		ctx->GenerateMips(outSrv.Get());
+		return true;
+	}
+}
+
 // 文字列をUTF-8としてワイド文字列に変換する
 std::wstring StringToWString(const std::string& str)
 {
@@ -134,6 +178,12 @@ bool Texture::Load(const std::string& filename)
         ctx->GenerateMips(m_srv.Get());
     }
 
+    // ノーマルマップを用意（"_n"ファイル優先、無ければアルベドから自動生成）
+    if (SUCCEEDED(hr) && !LoadNormalMapFile(filename))
+    {
+        GenerateNormalMap(pixels, w, h);
+    }
+
     stbi_image_free(pixels);
     return SUCCEEDED(hr);
 }
@@ -199,6 +249,12 @@ bool Texture::LoadFromMemory(const unsigned char* Data, int len) {
         ctx->GenerateMips(m_srv.Get());
     }
 
+    // 埋め込みテクスチャもアルベドからノーマルマップを自動生成する
+    if (SUCCEEDED(hr))
+    {
+        GenerateNormalMap(pixels, m_width, m_height);
+    }
+
     // ピクセルイメージ解放
     stbi_image_free(pixels);
 
@@ -213,6 +269,109 @@ void Texture::SetGPU()
     ID3D11ShaderResourceView* srv = m_srv.Get(); // null 可（unbind）
     ID3D11ShaderResourceView * srvs[1] = { srv };
     ctx->PSSetShaderResources(0, 1, srvs);
+
+    // ノーマルマップをt2へ（未所持なら平坦ノーマルで凹凸なし）
+    ID3D11ShaderResourceView* normalSrv = m_normalSrv ? m_normalSrv.Get() : GetFlatNormalSRV();
+    ctx->PSSetShaderResources(2, 1, &normalSrv);
+}
+
+// "<名前>_n.<拡張子>" のノーマルマップ画像があればロードする
+bool Texture::LoadNormalMapFile(const std::string& albedoFilename)
+{
+    size_t dotPos = albedoFilename.find_last_of('.');
+    if (dotPos == std::string::npos) return false;
+
+    std::string normalPath = albedoFilename.substr(0, dotPos) + "_n" + albedoFilename.substr(dotPos);
+    if (!std::ifstream(normalPath, std::ios::binary).good()) return false;
+
+    int w = 0, h = 0, bpp = 0;
+    unsigned char* pixels = stbi_load(normalPath.c_str(), &w, &h, &bpp, 4);
+    if (!pixels) return false;
+
+    bool result = CreateSRVFromPixels(pixels, w, h, m_normalSrv);
+    stbi_image_free(pixels);
+    return result;
+}
+
+// アルベドのピクセルデータからSobelフィルタでノーマルマップを生成する
+bool Texture::GenerateNormalMap(const unsigned char* pixels, int width, int height)
+{
+    if (!pixels || width <= 2 || height <= 2) return false;
+
+    // 輝度マップを作成
+    std::vector<float> luma(static_cast<size_t>(width) * height);
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            const unsigned char* p = &pixels[(static_cast<size_t>(y) * width + x) * 4];
+            luma[static_cast<size_t>(y) * width + x] = (0.299f * p[0] + 0.587f * p[1] + 0.114f * p[2]) / 255.0f;
+        }
+    }
+
+    // Sobelフィルタで勾配を求め、法線へ変換する（端はクランプ）
+    std::vector<unsigned char> normalPixels(static_cast<size_t>(width) * height * 4);
+    auto sampleLuma = [&](int x, int y)
+    {
+        x = std::clamp(x, 0, width - 1);
+        y = std::clamp(y, 0, height - 1);
+        return luma[static_cast<size_t>(y) * width + x];
+    };
+
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            float dx = (sampleLuma(x + 1, y - 1) + 2.0f * sampleLuma(x + 1, y) + sampleLuma(x + 1, y + 1))
+                     - (sampleLuma(x - 1, y - 1) + 2.0f * sampleLuma(x - 1, y) + sampleLuma(x - 1, y + 1));
+            float dy = (sampleLuma(x - 1, y + 1) + 2.0f * sampleLuma(x, y + 1) + sampleLuma(x + 1, y + 1))
+                     - (sampleLuma(x - 1, y - 1) + 2.0f * sampleLuma(x, y - 1) + sampleLuma(x + 1, y - 1));
+
+            // 勾配の逆方向へ傾けた法線を正規化して0〜255へエンコードする
+            DirectX::SimpleMath::Vector3 n(-dx * NORMAL_GEN_STRENGTH, -dy * NORMAL_GEN_STRENGTH, 1.0f);
+            n.Normalize();
+
+            unsigned char* dst = &normalPixels[(static_cast<size_t>(y) * width + x) * 4];
+            dst[0] = static_cast<unsigned char>((n.x * 0.5f + 0.5f) * 255.0f);
+            dst[1] = static_cast<unsigned char>((n.y * 0.5f + 0.5f) * 255.0f);
+            dst[2] = static_cast<unsigned char>((n.z * 0.5f + 0.5f) * 255.0f);
+            dst[3] = 255;
+        }
+    }
+
+    return CreateSRVFromPixels(normalPixels.data(), width, height, m_normalSrv);
+}
+
+// 平坦ノーマルマップを取得する（未作成なら生成）
+ID3D11ShaderResourceView* Texture::GetFlatNormalSRV()
+{
+    if (!s_FlatNormalSrv)
+    {
+        // 真上を向いた法線(0,0,1)のみの1x1テクスチャ
+        const unsigned char flatPixel[4] = { 128, 128, 255, 255 };
+
+        ID3D11Device* device = Renderer::GetDevice();
+        if (!device) return nullptr;
+
+        ComPtr<ID3D11Texture2D> tex;
+        D3D11_TEXTURE2D_DESC desc{};
+        desc.Width = 1;
+        desc.Height = 1;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+        D3D11_SUBRESOURCE_DATA initData{};
+        initData.pSysMem = flatPixel;
+        initData.SysMemPitch = 4;
+
+        if (FAILED(device->CreateTexture2D(&desc, &initData, tex.GetAddressOf()))) return nullptr;
+        if (FAILED(device->CreateShaderResourceView(tex.Get(), nullptr, s_FlatNormalSrv.GetAddressOf()))) return nullptr;
+    }
+    return s_FlatNormalSrv.Get();
 }
 
 
