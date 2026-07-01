@@ -21,7 +21,7 @@ private:
 
     std::shared_ptr<MiniMap> m_MiniMap; // ミニマップ（エフェクトの上に描画するため個別管理）
 
-    float m_IntroTimer = 0.0f;
+    float m_IntroTimer = 0.0f; // イントロ演出の経過時間
     DirectX::SimpleMath::Vector3 m_PlayerStartPos{}; // プレイヤーの開始位置（本来のスタート位置）
     DirectX::SimpleMath::Vector3 m_GoalPos{};        // ゴールの位置
     DirectX::SimpleMath::Vector3 m_MapCenterPos{};   // スタートとゴールの中点
@@ -63,8 +63,8 @@ private:
     static constexpr float BGM_RESUME_DELAY = 1.5f;  // 追跡解除後にBGMを再開するまでの秒数
 
 
-    std::unique_ptr<VisualObject> m_UI_Capsule;//カプセルUI
-    std::unique_ptr<VisualObject> m_BuckBord;//カプセルの背景UI
+    std::unique_ptr<VisualObject> m_UI_Capsule; // カプセルUI
+    std::unique_ptr<VisualObject> m_BuckBord; // カプセルの背景UI
 
     std::unique_ptr<VisualObject> m_StaminaGauge;   // スタミナゲージ本体
     std::unique_ptr<VisualObject> m_StaminaGaugeBG; // スタミナゲージ背景
@@ -72,6 +72,8 @@ private:
 	std::unique_ptr<VisualObject> m_OptionGuide; // 操作説明UI
 
     std::unique_ptr<PauseMenu> m_OptionMenu;  // ポーズメニュー
+
+    float m_GameTimer = 0.0f; // プレイ時間（イントロ終了後から計測、秒）
 
 
     //イントロ更新用の関数

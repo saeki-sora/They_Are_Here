@@ -97,3 +97,37 @@ bool CreatePixelShader(ID3D11Device* device,		// ピクセルシェーダーオ�
 	ID3D11PixelShader** ppPixelShader);
 
 std::string ExtractFileName(std::string fullpath, char split);
+
+// デバッグ描画時の D3D11 レンダーステート一時保存用
+// SimpleBoxCollider と Enemy の DrawDebug 系関数で共有する
+struct D3D11DebugState
+{
+	ID3D11RasterizerState*    RasterState                                       = nullptr;
+	ID3D11DepthStencilState*  DepthState                                        = nullptr;
+	UINT                      StencilRef                                         = 0;
+	ID3D11BlendState*         BlendState                                        = nullptr;
+	float                     BlendFactor[4]                                    = {};
+	UINT                      SampleMask                                        = 0;
+	ID3D11InputLayout*        InputLayout                                       = nullptr;
+	D3D11_PRIMITIVE_TOPOLOGY  Topology                                          = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+	ID3D11VertexShader*       VS                                                = nullptr;
+	ID3D11ClassInstance*      VSInstances[256]                                  = {};
+	UINT                      NumVSInst                                         = 256;
+	ID3D11PixelShader*        PS                                                = nullptr;
+	ID3D11ClassInstance*      PSInstances[256]                                  = {};
+	UINT                      NumPSInst                                         = 256;
+	ID3D11Buffer*             VB[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT]     = {};
+	UINT                      VBStride[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
+	UINT                      VBOffset[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
+	ID3D11Buffer*             IB                                                = nullptr;
+	DXGI_FORMAT               IBFmt                                             = DXGI_FORMAT_UNKNOWN;
+	UINT                      IBOfs                                             = 0;
+	ID3D11Buffer*             VSCB[4]                                           = {};
+	ID3D11Buffer*             PSCB[4]                                           = {};
+	ID3D11ShaderResourceView* PSSRV[4]                                          = {};
+	ID3D11SamplerState*       PSSampler[4]                                      = {};
+};
+
+// デバッグ描画前後に呼ぶ。Save → 描画 → Restore の組み合わせで使う
+void SaveD3D11DebugState(ID3D11DeviceContext* ctx, D3D11DebugState& state);
+void RestoreD3D11DebugState(ID3D11DeviceContext* ctx, D3D11DebugState& state);

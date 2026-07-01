@@ -2,8 +2,6 @@
 #include "DebugManager.h"
 #include <iostream>
 
-DebugManager* DebugManager::s_Instance = nullptr;
-
 DebugManager::DebugManager()
     : m_DebugModeEnabled(false)
     , m_ShowColliders(false)
@@ -24,28 +22,8 @@ DebugManager::~DebugManager()
 
 DebugManager& DebugManager::GetInstance()
 {
-    if (!s_Instance)
-    {
-        s_Instance = new DebugManager();
-    }
-    return *s_Instance;
-}
-
-void DebugManager::Create()
-{
-    if (!s_Instance)
-    {
-        s_Instance = new DebugManager();
-    }
-}
-
-void DebugManager::Destroy()
-{
-    if (s_Instance)
-    {
-        delete s_Instance;
-        s_Instance = nullptr;
-    }
+    static DebugManager instance;
+    return instance;
 }
 
 void DebugManager::Update(float deltaTime)
@@ -146,41 +124,34 @@ void DebugManager::ToggleDebugMode()
 void DebugManager::ToggleColliderDisplay()
 {
     m_ShowColliders = !m_ShowColliders;
-    //std::cout << "Collider Display: " << (m_ShowColliders ? "ON" : "OFF") << "\n";
 }
 
 void DebugManager::ToggleNoClipMode()
 {
     m_NoClipMode = !m_NoClipMode;
-    //std::cout << "No-Clip Mode: " << (m_NoClipMode ? "ON" : "OFF") << "\n";
 }
 
 void DebugManager::ToggleEnemyPathDisplay()
 {
     m_ShowEnemyPath = !m_ShowEnemyPath;
-    //std::cout << "Enemy Path Display: " << (m_ShowEnemyPath ? "ON" : "OFF") << "\n";
 }
 
 void DebugManager::ToggleEnemyVisionDisplay()
 {
     m_ShowEnemyVision = !m_ShowEnemyVision;
-    //std::cout << "Enemy Vision Display: " << (m_ShowEnemyVision ? "ON" : "OFF") << "\n";
 }
 
 void DebugManager::ToggleInvincibleMode()
 {
     m_InvincibleMode = !m_InvincibleMode;
-    //std::cout << "Invincible Mode: " << (m_InvincibleMode ? "ON" : "OFF") << "\n";
 }
 
 void DebugManager::ToggleEnemyWhiskerDisplay()
 {
     m_ShowEnemyWhisker = !m_ShowEnemyWhisker;
-    //std::cout << "Enemy Whisker Display: " << (m_ShowEnemyWhisker ? "ON" : "OFF") << "\n";
 }
 
 void DebugManager::ToggleLampLightsDisplay()
 {
     m_ShowLampLights = !m_ShowLampLights;
-    //std::cout << "Lamp Light Display: " << (m_ShowLampLights ? "ON" : "OFF") << "\n";
 }

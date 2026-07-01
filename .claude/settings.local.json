@@ -16,7 +16,21 @@
       "Bash(/tmp/add_bom.ps1:*)",
       "Bash(/tmp/add_bom2.ps1:*)",
       "Bash(wmic logicaldisk:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(ls -la \"C:\\\\Projrcts\\\\They_Are_Here\\\\\" 2>&1 | head -30)",
+      "Bash(grep -iE \"\\\\.\\(png|dds\\)$\")",
+      "Bash(grep -c \"^[[:space:]]*//.*[日本語]\" \"C:\\\\Projrcts\\\\They_Are_Here\\\\src\\\\Enemy.cpp\")",
+      "Bash(grep -c \"^[[:space:]]*//.*\" \"C:\\\\Projrcts\\\\They_Are_Here\\\\src\\\\Enemy.cpp\")",
+      "Bash(grep -E \"[0-9]\\\\.[0-9]+f|[0-9]{2,}\\\\s*f\" \"C:\\\\Projrcts\\\\They_Are_Here\\\\src\\\\Player.cpp\")",
+      "Bash(grep \"^[[:space:]]*//\" \"C:\\\\Projrcts\\\\They_Are_Here\\\\src\\\\ProcessPath\" -A 2)",
+      "PowerShell(Get-ChildItem \"C:\\\\Projrcts\\\\They_Are_Here\\\\assets\\\\texture\" | Where-Object { $_.Name -match \"num\" -or $_.Name -match \"Num\" })",
+      "PowerShell(Get-ChildItem \"C:\\\\Projrcts\\\\They_Are_Here\\\\assets\" -Recurse | Where-Object { $_.Name -match \"num\" -or $_.Name -match \"Num\" })",
+      "PowerShell(Get-ChildItem \"C:\\\\Projrcts\\\\They_Are_Here\\\\src\" | Where-Object { $_.PSIsContainer } | Select-Object Name)",
+      "PowerShell(Get-ChildItem \"C:\\\\Projrcts\\\\They_Are_Here\\\\src\\\\assets\\\\texture\" | Where-Object { $_.Name -match \"[Nn]um\" } | Select-Object Name)",
+      "PowerShell($msbuild = Get-ChildItem \"C:\\\\Program Files\\\\Microsoft Visual Studio\" -Recurse -Filter \"msbuild.exe\" 2>$null | Where-Object { $_.FullName -match \"amd64\" } | Select-Object -First 1 -ExpandProperty FullName; $msbuild)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Enterprise\\\\MSBuild\\\\Current\\\\Bin\\\\amd64\\\\MSBuild.exe\" \"C:\\\\Projrcts\\\\They_Are_Here\\\\TheyAreHere.sln\" /p:Configuration=Debug /p:Platform=x64 /m /nologo /v:minimal 2>&1)",
+      "PowerShell($buildOut[-15..-1])",
+      "PowerShell(Get-Content \"$env:TEMP\\\\build_debug.log\" -Tail 20)"
     ]
   }
 }

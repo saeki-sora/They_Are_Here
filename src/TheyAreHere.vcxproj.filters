@@ -210,9 +210,6 @@
     <ClCompile Include="FadeEffect.cpp">
       <Filter>ソース ファイル\Effect</Filter>
     </ClCompile>
-    <ClCompile Include="UI_Result.cpp">
-      <Filter>ソース ファイル\Object\2D</Filter>
-    </ClCompile>
     <ClCompile Include="SceneManager.cpp">
       <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
@@ -285,7 +282,7 @@
     <ClCompile Include="EnemyState_StalkerChase.cpp">
       <Filter>ソース ファイル\Object\Enemy</Filter>
     </ClCompile>
-    <ClCompile Include="loversEnemy.cpp">
+    <ClCompile Include="LoverEnemy.cpp">
       <Filter>ソース ファイル\Object\Enemy</Filter>
     </ClCompile>
     <ClCompile Include="EnemyState_loversChase.cpp">
@@ -473,9 +470,6 @@
     <ClInclude Include="FadeEffect.h">
       <Filter>ヘッダー ファイル\Effect</Filter>
     </ClInclude>
-    <ClInclude Include="UI_Result.h">
-      <Filter>ヘッダー ファイル\Object\2D</Filter>
-    </ClInclude>
     <ClInclude Include="SceneManager.h">
       <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
@@ -545,7 +539,7 @@
     <ClInclude Include="EnemyState_StalkerChase.h">
       <Filter>ヘッダー ファイル\Object\Enemy</Filter>
     </ClInclude>
-    <ClInclude Include="loversEnemy.h">
+    <ClInclude Include="LoverEnemy.h">
       <Filter>ヘッダー ファイル\Object\Enemy</Filter>
     </ClInclude>
     <ClInclude Include="EnemyState_loversChase.h">

@@ -68,7 +68,7 @@ void Pole::Init()
 		m->Create(materials[i]);
 
 		// マテリアルオブジェクトを配列に追加
-		m_Materiales.push_back(std::move(m));
+		m_Materials.push_back(std::move(m));
 	}
 
 }
@@ -105,9 +105,9 @@ void Pole::Draw()
 	for (int i = 0; i < m_subsets.size(); i++)
 	{
 		// マテリアルをセット(サブセット情報の中にあるマテリアルインデックスを使用)
-		m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
+		m_Materials[m_subsets[i].MaterialIdx]->SetGPU();
 
-		if (m_Materiales[m_subsets[i].MaterialIdx]->isTextureEnable())
+		if (m_Materials[m_subsets[i].MaterialIdx]->isTextureEnable())
 		{
 			m_Textures[m_subsets[i].MaterialIdx]->SetGPU();
 		}
@@ -130,6 +130,16 @@ void Pole::Draw()
 void Pole::Uninit()
 {
 
+}
+
+bool Pole::GetGoalFlag() const
+{
+	return m_IsGoal;
+}
+
+void Pole::SetPosition(const DirectX::SimpleMath::Vector3& pos)
+{
+	m_Position = pos;
 }
 
 

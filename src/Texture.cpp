@@ -63,7 +63,7 @@ std::wstring StringToWString(const std::string& str)
 
 
 // テクスチャをロード
-bool Texture::Load(const std::string& filename)
+bool Texture::Load(const std::string& filename, bool generateNormalMap)
 {
     std::string ext = filename.substr(filename.find_last_of('.'));
     ID3D11Device* device = Renderer::GetDevice();
@@ -179,7 +179,8 @@ bool Texture::Load(const std::string& filename)
     }
 
     // ノーマルマップを用意（"_n"ファイル優先、無ければアルベドから自動生成）
-    if (SUCCEEDED(hr) && !LoadNormalMapFile(filename))
+    // 2D/UI（unlitシェーダー）は参照しないため、generateNormalMap=false でスキップ可能
+    if (generateNormalMap && SUCCEEDED(hr) && !LoadNormalMapFile(filename))
     {
         GenerateNormalMap(pixels, w, h);
     }

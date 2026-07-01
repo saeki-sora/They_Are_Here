@@ -21,7 +21,7 @@ protected:
 
 	// 描画の為の情報（見た目に関わる部分）
 	Shader m_Shader; // シェーダー
-	std::vector<std::unique_ptr<Material>> m_Materiales;//マテリアル情報
+	std::vector<std::unique_ptr<Material>> m_Materials;//マテリアル情報
 	std::vector<SUBSET> m_subsets;//サブセット情報
 	std::vector<std::shared_ptr<Texture>> m_Textures;//テクスチャ
 
@@ -44,7 +44,7 @@ public:
 	virtual void SetPosition(const DirectX::SimpleMath::Vector3& pos);//ポジション
 	virtual void SetScale(const DirectX::SimpleMath::Vector3& scale);//スケール
 	virtual void SetRotation(const DirectX::SimpleMath::Vector3& rot);//回転
-	void SetTargetYaw(float yaw) { m_TargetYaw = yaw; }// 旋回の目標角度を設定
+	void SetTargetYaw(float yaw);// 旋回の目標角度を設定
 
 	//ゲッター
 	virtual DirectX::SimpleMath::Vector3 GetPosition()const;//ポジション
@@ -52,10 +52,10 @@ public:
 	virtual DirectX::SimpleMath::Vector3 GetRotation()const;//回転
 	float GetTargetYaw() const; // 旋回の目標角度を取得
 
-	virtual bool Is3D() const { return true; } //オブジェクトタイプ。デフォルトは3D
+	virtual bool Is3D() const; //オブジェクトタイプ。デフォルトは3D
 
-	virtual void Destroy() { m_IsPendingDestroy = true; }// オブジェクトを破棄する (フラグを立てる)
-	bool IsPendingDestroy() const { return m_IsPendingDestroy; }// 破棄フラグが立っているか
+	virtual void Destroy();// オブジェクトを破棄する (フラグを立てる)
+	bool IsPendingDestroy() const;// 破棄フラグが立っているか
 
 };
 

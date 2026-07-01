@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "GameOverScene.h"
 #include "Input.h"
 #include "SceneManager.h"
@@ -24,7 +24,14 @@ void GameOverScene::OnInit()
 		shared_pt->SetScale(1280.0f, 720.0f, 0.0f);
 	}
 
-
+	// スペースキーでタイトルへ戻る操作説明
+	auto weak_pt3 = AddObject<VisualObject>();
+	if (auto shared_pt = weak_pt3.lock())
+	{
+		shared_pt->SetPosition(0.0f, -280.0f, 0.0f);
+		shared_pt->SetTexture("assets/texture/SpaseKey_UI.png");
+		shared_pt->SetScale(660.0f, 496.0f, 1.0f);
+	}
 }
 
 // 更新
@@ -42,5 +49,3 @@ void GameOverScene::OnUnload()
 {
 	SceneBase::OnUnload();
 }
-
-

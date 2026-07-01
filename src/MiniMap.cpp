@@ -31,28 +31,28 @@ static void SetupFlatMaterial()
 namespace {
 
 	// ミニマップテクスチャサイズ
-	constexpr int   kTexSize = 512;
+	constexpr int   TEX_SIZE = 512;
 
 	// UI表示設定
-	constexpr float kSmallMapSize = 250.0f;
-	constexpr float kLargeMapScreenRate = 0.8f;// 拡大時の画面占有率.0-1.0の範囲
-	constexpr float kFrameInnerRate = 0.7f;
-	constexpr float kMapMargin = 20.0f;// 画面端からのマップの余白
-	constexpr float kZoomLevel = 0.3f; // 拡大時の表示範囲.0-1.0の範囲
+	constexpr float SMALL_MAP_SIZE = 250.0f;
+	constexpr float LARGE_MAP_SCREEN_RATE = 0.8f;// 拡大時の画面占有率.0-1.0の範囲
+	constexpr float FRAME_INNER_RATE = 0.7f;
+	constexpr float MAP_MARGIN = 20.0f;// 画面端からのマップの余白
+	constexpr float ZOOM_LEVEL = 0.3f; // 拡大時の表示範囲.0-1.0の範囲
 
 	// アイコンサイズ
-	constexpr float kPlayerIconSize = 32.0f;
+	constexpr float PLAYER_ICON_SIZE = 32.0f;
 
 	// 方向インジケーター設定
-	constexpr float kDirArrowSize = 40.0f;  // 矢印テクスチャの描画サイズ
-	constexpr float kDirIconSize = 22.0f;  // アイコンテクスチャの描画サイズ
-	constexpr float kDirEdgeRate = 0.47f;  // ミニマップ縁への寄せ率（0.5=縁ぴったり）
+	constexpr float DIR_ARROW_SIZE = 40.0f;  // 矢印テクスチャの描画サイズ
+	constexpr float DIR_ICON_SIZE = 22.0f;  // アイコンテクスチャの描画サイズ
+	constexpr float DIR_EDGE_RATE = 0.47f;  // ミニマップ縁への寄せ率（0.5=縁ぴったり）
 
 	// UV反転設定
-	constexpr bool  kFlipMiniMapU = false;
-	constexpr bool  kFlipMiniMapV = false;
-	constexpr bool  kQuadFlipU = false;
-	constexpr bool  kQuadFlipV = false;
+	constexpr bool  FLIP_MINIMAP_U = false;
+	constexpr bool  FLIP_MINIMAP_V = false;
+	constexpr bool  QUAD_FLIP_U = false;
+	constexpr bool  QUAD_FLIP_V = false;
 }
 
 
@@ -119,7 +119,7 @@ static Vector2 WorldToMinimapUVRaw(const MakeMap* mapData, const Vector3& pos)
 	float u = 1.0f - (pos.x - xMin) / (xMax - xMin);
 	float v = 1.0f - (pos.z - zMin) / (zMax - zMin);
 
-	return ApplyUVFlip({ u, v }, kFlipMiniMapU, kFlipMiniMapV);
+	return ApplyUVFlip({ u, v }, FLIP_MINIMAP_U, FLIP_MINIMAP_V);
 }
 
 
@@ -146,20 +146,20 @@ void MiniMap::Init()
 	//---------------------------------------------------------
 	// リソース読み込み
 	//---------------------------------------------------------
-	m_TexWall.Load("assets/texture/icon_wall.png");
-	m_TexGoal.Load("assets/texture/icon_goal.png");
-	m_TexItem.Load("assets/texture/icon_item.png");
-	m_TexPlayer.Load("assets/texture/icon_player.png");
-	m_TexFogBrush.Load("assets/texture/fog_brush.png");
-	m_TexFrame.Load("assets/texture/minimap_frame.png");
+	// ミニマップアイコンは2D描画のみでノーマルマップを使わないため生成をスキップ
+	m_TexWall.Load("assets/texture/icon_wall.png", false);
+	m_TexGoal.Load("assets/texture/icon_goal.png", false);
+	m_TexItem.Load("assets/texture/icon_item.png", false);
+	m_TexPlayer.Load("assets/texture/icon_player.png", false);
+	m_TexFogBrush.Load("assets/texture/fog_brush.png", false);
+	m_TexFrame.Load("assets/texture/minimap_frame.png", false);
 
-	m_TexDirArrow.Load("assets/texture/icon_direction_arrow.png");
-	m_TexDirKey.Load("assets/texture/icon_direction_key.png");
-	m_TexDirGoal.Load("assets/texture/icon_direction_goal.png");
+	m_TexDirArrow.Load("assets/texture/icon_direction_arrow.png", false);
+	m_TexDirKey.Load("assets/texture/icon_direction_key.png", false);
+	m_TexDirGoal.Load("assets/texture/icon_direction_goal.png", false);
 
 	m_MiniMapShader = std::make_unique<Shader>();
 	m_MiniMapShader->Create("shader/MiniMapVS.hlsl", "shader/MiniMapPS.hlsl");
-	//std::cout << "[MiniMap] Shader loaded successfully" << std::endl;
 
 	//---------------------------------------------------------
 	// 定数バッファ作成 (UV調整用)
@@ -169,15 +169,7 @@ void MiniMap::Init()
 	cbDesc.Usage = D3D11_USAGE_DEFAULT;
 	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
-	HRESULT hr = Renderer::GetDevice()->CreateBuffer(&cbDesc, nullptr, m_UVAdjustCB.GetAddressOf());
-	if (SUCCEEDED(hr))
-	{
-		//std::cout << "[MiniMap] UV Adjust constant buffer created successfully" << std::endl;
-	}
-	else
-	{
-		//std::cout << "[MiniMap] ERROR: Failed to create UV Adjust constant buffer" << std::endl;
-	}
+	Renderer::GetDevice()->CreateBuffer(&cbDesc, nullptr, m_UVAdjustCB.GetAddressOf());
 
 	CreateRenderTargets();
 
@@ -212,8 +204,8 @@ void MiniMap::CreateRenderTargets()
 	auto device = Renderer::GetDevice();
 
 	D3D11_TEXTURE2D_DESC desc = {};
-	desc.Width = (UINT)kTexSize;
-	desc.Height = (UINT)kTexSize;
+	desc.Width = (UINT)TEX_SIZE;
+	desc.Height = (UINT)TEX_SIZE;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -242,8 +234,8 @@ void MiniMap::CreateStaticMapResources()
 	auto device = Renderer::GetDevice();
 
 	D3D11_TEXTURE2D_DESC desc = {};
-	desc.Width = (UINT)kTexSize;
-	desc.Height = (UINT)kTexSize;
+	desc.Width = (UINT)TEX_SIZE;
+	desc.Height = (UINT)TEX_SIZE;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -279,11 +271,11 @@ void MiniMap::BakeStaticMap()
 	context->ClearRenderTargetView(m_StaticMapRTV.Get(), clearColor);
 
 	// ビューポート行設定
-	D3D11_VIEWPORT vp = { 0.0f, 0.0f, (float)kTexSize, (float)kTexSize, 0.0f, 1.0f };
+	D3D11_VIEWPORT vp = { 0.0f, 0.0f, (float)TEX_SIZE, (float)TEX_SIZE, 0.0f, 1.0f };
 	context->RSSetViewports(1, &vp);
 
 	Matrix view = Matrix::Identity;
-	Matrix proj = Matrix::CreateOrthographicOffCenter(0, kTexSize, kTexSize, 0, 0, 1);
+	Matrix proj = Matrix::CreateOrthographicOffCenter(0, TEX_SIZE, TEX_SIZE, 0, 0, 1);
 	Renderer::SetViewMatrix(&view);
 	Renderer::SetProjectionMatrix(&proj);
 
@@ -307,11 +299,11 @@ void MiniMap::BakeStaticMap()
 
 			auto uv = WorldToMinimapUV(m_MapData, { worldX, 0.0f, worldZ });
 
-			return Vector2(uv.x * kTexSize, uv.y * kTexSize);
+			return Vector2(uv.x * TEX_SIZE, uv.y * TEX_SIZE);
 		};
 
-	float cellScaleX = kTexSize / (float)m_MapData->GetSizeX();
-	float cellScaleY = kTexSize / (float)m_MapData->GetSizeY();
+	float cellScaleX = TEX_SIZE / (float)m_MapData->GetSizeX();
+	float cellScaleY = TEX_SIZE / (float)m_MapData->GetSizeY();
 
 	// 壁ルーチン
 	for (int x = 0; x < m_MapData->GetSizeX(); ++x)
@@ -346,7 +338,6 @@ void MiniMap::Update(float deltaTime)
 	if (Input::GetKeyPress('M') && !m_PrevMKey)
 	{
 		m_IsLargeMap = !m_IsLargeMap;
-		//std::cout << "[MiniMap] Map mode: " << (m_IsLargeMap ? "LARGE" : "MINI") << std::endl;
 	}
 
 	m_PrevMKey = Input::GetKeyPress('M');
@@ -360,27 +351,6 @@ void MiniMap::Update(float deltaTime)
 
 		m_PlayerTexX = uv.x;
 		m_PlayerTexY = uv.y;
-
-#ifdef _DEBUG
-		static int dbgCnt = 0;
-		if (++dbgCnt % 60 == 0)
-		{
-			// UV変換の中間値も表示して検証
-			const float bs = MAP::Config::BLOCK_SIZE;
-			const float half = bs * 0.5f;
-			const float cX = (m_MapData->GetSizeX() / 2.0f) * bs;
-			const float cZ = (m_MapData->GetSizeY() / 2.0f) * bs;
-			const float wR = half + cX;
-			const float wL = wR - bs * (m_MapData->GetSizeX() - 1);
-			const float wT = -half + cZ;
-			const float wB = wT - bs * (m_MapData->GetSizeY() - 1);
-			float rawU = (playerPos.x - wL) / (wR - wL);
-			float rawV = (playerPos.z - wB) / (wT - wB);
-			// std::cout << "[MiniMap] World=(" << playerPos.x << "," << playerPos.z
-			// 	<< ") rawUV=(" << rawU << "," << rawV
-			// 	<< ") finalUV=(" << uv.x << "," << uv.y << ")" << std::endl;
-		}
-#endif
 	}
 	else
 	{
@@ -427,12 +397,12 @@ void MiniMap::DrawMapIcons()
 	context->ClearRenderTargetView(m_MapRTV.Get(), clearColor);
 
 	// ビューポート設定
-	D3D11_VIEWPORT vp = { 0.0f, 0.0f, (float)kTexSize, (float)kTexSize, 0.0f, 1.0f };
+	D3D11_VIEWPORT vp = { 0.0f, 0.0f, (float)TEX_SIZE, (float)TEX_SIZE, 0.0f, 1.0f };
 	context->RSSetViewports(1, &vp);
 
 	// 2D投影行列の設定
 	Matrix view = Matrix::Identity;
-	Matrix proj = Matrix::CreateOrthographicOffCenter(0, kTexSize, kTexSize, 0, 0, 1);
+	Matrix proj = Matrix::CreateOrthographicOffCenter(0, TEX_SIZE, TEX_SIZE, 0, 0, 1);
 	Renderer::SetViewMatrix(&view);
 	Renderer::SetProjectionMatrix(&proj);
 
@@ -449,8 +419,8 @@ void MiniMap::DrawMapIcons()
 	// -------------------------------------------------------
 	{
 		// 壁の描画
-		Matrix world = Matrix::CreateScale((float)kTexSize, -(float)kTexSize, 1.0f) *
-			Matrix::CreateTranslation((float)kTexSize * 0.5f, (float)kTexSize * 0.5f, 0.0f);
+		Matrix world = Matrix::CreateScale((float)TEX_SIZE, -(float)TEX_SIZE, 1.0f) *
+			Matrix::CreateTranslation((float)TEX_SIZE * 0.5f, (float)TEX_SIZE * 0.5f, 0.0f);
 
 		Renderer::SetWorldMatrix(&world);
 
@@ -468,8 +438,8 @@ void MiniMap::DrawMapIcons()
 	m_MapData->GetStartGoal(sx, sy, gx, gy);
 
 	// グリッドサイズ計算
-	float cellScaleX = kTexSize / (float)m_MapData->GetSizeX();
-	float cellScaleY = kTexSize / (float)m_MapData->GetSizeY();
+	float cellScaleX = TEX_SIZE / (float)m_MapData->GetSizeX();
+	float cellScaleY = TEX_SIZE / (float)m_MapData->GetSizeY();
 
 	// ゴール座標計算
 	const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
@@ -481,7 +451,7 @@ void MiniMap::DrawMapIcons()
 
 	// ワールド座標をミニマップUVに変換
 	auto uv = WorldToMinimapUV(m_MapData, { worldX, 0.0f, worldZ });
-	Vector2 drawPos(uv.x * kTexSize, uv.y * kTexSize);
+	Vector2 drawPos(uv.x * TEX_SIZE, uv.y * TEX_SIZE);
 
 	// 描画実行
 	Matrix world = Matrix::CreateScale(cellScaleX, cellScaleY, 1.0f) *
@@ -506,19 +476,19 @@ void MiniMap::UpdateFog(const Vector3& playerPos)
 	// 描画先をFogテクスチャに
 	context->OMSetRenderTargets(1, m_FogRTV.GetAddressOf(), nullptr);
 
-	D3D11_VIEWPORT vp = { 0.0f, 0.0f, (float)kTexSize, (float)kTexSize, 0.0f, 1.0f };
+	D3D11_VIEWPORT vp = { 0.0f, 0.0f, (float)TEX_SIZE, (float)TEX_SIZE, 0.0f, 1.0f };
 	context->RSSetViewports(1, &vp);
 
 	Matrix view = Matrix::Identity;
-	Matrix proj = Matrix::CreateOrthographicOffCenter(0, kTexSize, kTexSize, 0, 0, 1);
+	Matrix proj = Matrix::CreateOrthographicOffCenter(0, TEX_SIZE, TEX_SIZE, 0, 0, 1);
 	Renderer::SetViewMatrix(&view);
 	Renderer::SetProjectionMatrix(&proj);
 
 
 	// 描画位置計算
 	auto uv = WorldToMinimapUV(m_MapData, playerPos);
-	float drawX = uv.x * kTexSize;
-	float drawY = uv.y * kTexSize;
+	float drawX = uv.x * TEX_SIZE;
+	float drawY = uv.y * TEX_SIZE;
 
 
 	// 加算合成でブラシを描画
@@ -567,14 +537,14 @@ void MiniMap::DrawUI()
 	const float halfH = screenH * 0.5f;
 
 	// マップ表示サイズ
-	float mapSize = m_IsLargeMap ? (screenH * kLargeMapScreenRate) : kSmallMapSize;
+	float mapSize = m_IsLargeMap ? (screenH * LARGE_MAP_SCREEN_RATE) : SMALL_MAP_SIZE;
 
 	// フレームサイズ計算(アスペクト比維持)
 	float frameTexW = (float)m_TexFrame.GetWidth();
 	float frameTexH = (float)m_TexFrame.GetHeight();
 	float frameAspect = (frameTexH != 0.0f) ? (frameTexW / frameTexH) : 1.0f;
 
-	float frameHeight = mapSize / kFrameInnerRate;
+	float frameHeight = mapSize / FRAME_INNER_RATE;
 	float frameWidth = frameHeight * frameAspect;
 
 	float worldX = 0.0f;
@@ -590,10 +560,10 @@ void MiniMap::DrawUI()
 	{
 		// 右上配置
 		// X: 中心から右へ (+) -> (画面半分 - マージン - フレーム半分)
-		worldX = halfW - kMapMargin - (frameWidth * 0.5f);
+		worldX = halfW - MAP_MARGIN - (frameWidth * 0.5f);
 
 		// Y: 中心から上へ (+) -> (画面半分 - マージン - フレーム半分)
-		worldY = halfH - kMapMargin - (frameHeight * 0.5f);
+		worldY = halfH - MAP_MARGIN - (frameHeight * 0.5f);
 	}
 
 	// 表示上の中心座標（アイコン描画用オフセット計算などに使用）
@@ -643,12 +613,12 @@ void MiniMap::DrawUI()
 		}
 		else
 		{
-			uvAdjust.uvScale = Vector2(kZoomLevel, kZoomLevel);
+			uvAdjust.uvScale = Vector2(ZOOM_LEVEL, ZOOM_LEVEL);
 
 			// プレイヤーを中心に持ってくるためのオフセット
 			uvAdjust.uvOffset = Vector2(
-				m_PlayerTexX - kZoomLevel * 0.5f,
-				m_PlayerTexY - kZoomLevel * 0.5f
+				m_PlayerTexX - ZOOM_LEVEL * 0.5f,
+				m_PlayerTexY - ZOOM_LEVEL * 0.5f
 			);
 
 			uvAdjust.mapRotation = mapRotAngle;
@@ -732,8 +702,8 @@ void MiniMap::DrawUI()
 				auto uv0 = WorldToMinimapUVRaw(m_MapData, pos);
 				auto uv1 = WorldToMinimapUVRaw(m_MapData, pos + f * 10.0f);
 
-				Vector2 q0 = ApplyUVFlip((uv0 - usedUvOffset) / usedUvScale, kQuadFlipU, kQuadFlipV);
-				Vector2 q1 = ApplyUVFlip((uv1 - usedUvOffset) / usedUvScale, kQuadFlipU, kQuadFlipV);
+				Vector2 q0 = ApplyUVFlip((uv0 - usedUvOffset) / usedUvScale, QUAD_FLIP_U, QUAD_FLIP_V);
+				Vector2 q1 = ApplyUVFlip((uv1 - usedUvOffset) / usedUvScale, QUAD_FLIP_U, QUAD_FLIP_V);
 
 				Vector2 d = q1 - q0;
 
@@ -741,7 +711,7 @@ void MiniMap::DrawUI()
 			}
 		}
 
-		Matrix world = Matrix::CreateScale(kPlayerIconSize, kPlayerIconSize, 1.0f) *
+		Matrix world = Matrix::CreateScale(PLAYER_ICON_SIZE, PLAYER_ICON_SIZE, 1.0f) *
 			Matrix::CreateRotationZ(rot) *
 			Matrix::CreateTranslation(iconWorldX, iconWorldY, 0.5f);
 
@@ -829,7 +799,7 @@ void MiniMap::DrawDirectionIndicator(
 	float playerScreenY = mapCY + (0.5f - playerLocalV) * mapSize;
 
 	// 7. 矢印スクリーン座標（上=前方、右=+X）
-	const float edgeRadius = mapSize * kDirEdgeRate;
+	const float edgeRadius = mapSize * DIR_EDGE_RATE;
 	float arrowX = playerScreenX + std::sin(angle) * edgeRadius;
 	float arrowY = playerScreenY + std::cos(angle) * edgeRadius;
 
@@ -840,14 +810,14 @@ void MiniMap::DrawDirectionIndicator(
 	m_VertexBuffer.SetGPU();
 	m_IndexBuffer.SetGPU();
 
-	Matrix arrowWorld = Matrix::CreateScale(kDirArrowSize, kDirArrowSize, 1.0f)
+	Matrix arrowWorld = Matrix::CreateScale(DIR_ARROW_SIZE, DIR_ARROW_SIZE, 1.0f)
 		* Matrix::CreateRotationZ(angle)
 		* Matrix::CreateTranslation(arrowX, arrowY, 0.5f);
 	Renderer::SetWorldMatrix(&arrowWorld);
 	m_TexDirArrow.SetGPU();
 	context->DrawIndexed(6, 0, 0);
 
-	Matrix iconWorld = Matrix::CreateScale(kDirIconSize, kDirIconSize, 1.0f)
+	Matrix iconWorld = Matrix::CreateScale(DIR_ICON_SIZE, DIR_ICON_SIZE, 1.0f)
 		* Matrix::CreateTranslation(arrowX, arrowY, 0.5f);
 	Renderer::SetWorldMatrix(&iconWorld);
 	if (showGoal)

@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "Enemy.h"
+#include "dx11helper.h"
 #include "Game.h"
 #include "MakeMap.h"
 #include "Player.h"
@@ -27,6 +28,33 @@ int Enemy::s_NextUID = 0;
 
 // フレームごとにリセット
 void Enemy::ResetPathCalculationCount() { m_PathCalculationCount = 0; }
+
+//=======================================
+// ゲッター・セッター
+//=======================================
+void Enemy::SetMap(MakeMap* map) { m_Map = map; }
+float Enemy::GetCatchRange() const { return m_CatchRange; }
+const DirectX::SimpleMath::Vector3& Enemy::GetLastPlayerPos() const { return m_LastPlayerPos; }
+void Enemy::SetLastPlayerPos(const DirectX::SimpleMath::Vector3& pos) { m_LastPlayerPos = pos; }
+MakeMap* Enemy::GetMap() const { return m_Map; }
+bool Enemy::HasPath() const { return !m_Waypoints.empty(); }
+bool Enemy::IsAtDestination() const { return m_Waypoints.empty(); }
+
+void Enemy::ClearPath()
+{
+	m_Waypoints.clear();
+	m_Velocity = DirectX::SimpleMath::Vector3::Zero;
+}
+
+bool Enemy::IsChasing() const { return m_State && m_State->IsChaseState(); }
+float Enemy::GetSearchSpeed() const { return m_SearchSpeed; }
+float Enemy::GetChaseSpeed() const { return m_ChaseSpeed; }
+float Enemy::GetChasePathUpdateInterval() const { return m_ChasePathUpdateInterval; }
+float Enemy::GetLostStateDuration() const { return m_LostStateDuration; }
+DirectX::SimpleMath::Vector3 Enemy::GetRotation() const { return m_Rotation; }
+DirectX::SimpleMath::Vector3 Enemy::GetVelocity() const { return m_Velocity; }
+void Enemy::SetRotation(const DirectX::SimpleMath::Vector3& rot) { m_Rotation = rot; }
+void Enemy::SetCurrentMaxSpeed(float speed) { m_CurrentMaxSpeed = speed; }
 
 
 // ============================================================
@@ -75,6 +103,7 @@ void Enemy::ReloadParams()
 	}
 	catch (std::exception& e)
 	{
+		(void)e; // Releaseビルドでは未使用になるため警告抑制
 #ifdef _DEBUG
 		std::cout << "[Enemy::ReloadParams] Json読み込み失敗: " << e.what() << std::endl;
 #endif
@@ -138,7 +167,7 @@ void Enemy::Init()
 	{
 		auto mat = std::make_unique<Material>();
 		mat->Create(materials[i]);
-		m_Materiales.push_back(std::move(mat));
+		m_Materials.push_back(std::move(mat));
 	}
 
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
@@ -363,9 +392,9 @@ void Enemy::Draw()
 	for (size_t i = 0; i < m_subsets.size(); ++i)
 	{
 		int matIdx = m_subsets[i].MaterialIdx;
-		m_Materiales[matIdx]->SetGPU();
+		m_Materials[matIdx]->SetGPU();
 
-		if (m_Materiales[matIdx]->isTextureEnable())
+		if (m_Materials[matIdx]->isTextureEnable())
 		{
 			m_Textures[matIdx]->SetGPU();
 		}
@@ -606,8 +635,6 @@ void Enemy::ProcessPath(const std::vector<Vector3>& worldPath)
 	// ウェイポイントのコーナーカット処理
 	if (m_Waypoints.size() >= 2)
 	{
-		// std::cout << "[DEBUG][コーナーカット] 開始: ウェイポイント数=" << m_Waypoints.size() << "\n";
-
 		// i=0: 敵の現在位置を「前の点」としてwaypoints[0]もカット
 		// → 追跡状態でも、探索状態と同じ早めに曲がり始める挙動に
 		{
@@ -680,28 +707,16 @@ void Enemy::ProcessPath(const std::vector<Vector3>& worldPath)
 			GridCoord newCell = Pathfinder::WorldToGrid(m_Map, newPos);
 			if (!m_Map->IsWalkable(newCell.x, newCell.y))
 			{
-				// std::cout << "  [カット" << i << "] 壁セルのためスキップ newPos=(" << newPos.x << "," << newPos.z << ")\n";
 				continue;
 			}
 			if (m_Map->GetClearance(newCell.x, newCell.y) < m_WallMargin)
 			{
-				// std::cout << "  [カット" << i << "] クリアランス不足 clearance=" << m_Map->GetClearance(newCell.x, newCell.y) << " < " << m_WallMargin << "\n";
 				continue;
 			}
-
-
-			// std::cout << "  [カット" << i << "] カット実行! (" << currentPoint.x << "," << currentPoint.z << ") → (" << newPos.x << "," << newPos.z << ")\n";
 
 			// ウェイポイントを前の点の方向にずらす
 			m_Waypoints[i] = newPos;
 		}
-	}
-
-	//コーナーカット後もウェイポイントが十分にあるかチェック
-	if (m_Waypoints.size() <= 1)
-	{
-		// 警告メッセージ
-		// std::cout << "[WARNING] 警告: コーナーカット後、ウェイポイントが少なすぎます\n";
 	}
 
 	return;
@@ -802,11 +817,9 @@ void Enemy::FollowPath(float deltaTime)
 	float useRadius = (m_State && m_State->IsChaseState() && m_Waypoints.size() == 1) ? 2.0f : m_ArriveRadius;
 	if (distHead <= useRadius)
 	{
-		//std::cout << "【移動】ウェイポイント到達！ 次へ進みます。\n";
 		m_Waypoints.pop_front();
 		if (m_Waypoints.empty())
 		{
-			//std::cout << "【移動】全ウェイポイント消化完了。停止します。\n";
 			m_Velocity = Vector3::Zero; // 停止
 			return;
 		}
@@ -914,129 +927,101 @@ void Enemy::FollowPath(float deltaTime)
 	float vlen = m_Velocity.Length();
 	if (vlen > m_CurrentMaxSpeed) m_Velocity *= (m_CurrentMaxSpeed / vlen);
 
-	auto tryMoveSlide = [this](const Vector3& delta)
+	AttemptMovementSlide(m_Velocity * deltaTime);
+}
+
+
+// ============================================================
+// 壁スライド移動処理
+// ------------------------------------------------------------
+// delta 方向への移動を試み、壁と衝突する場合は軸別スライドで回避する。
+// ============================================================
+void Enemy::AttemptMovementSlide(const Vector3& delta)
+{
+	if (!m_Map) { m_Position += delta; collider.center = m_Position; return; }
+
+	Vector3 originalPos = m_Position;
+	Vector3 targetPos = originalPos + delta;
+	float requiredClearance = m_WallMargin * 0.95f;
+
+	// 目標セルが安全なら直接移動
+	GridCoord targetCell = Pathfinder::WorldToGrid(m_Map, targetPos);
+	if (m_Map->IsWalkable(targetCell.x, targetCell.y))
+	{
+		if (m_Map->GetClearance(targetCell.x, targetCell.y) >= requiredClearance)
 		{
-			if (!m_Map) { m_Position += delta; collider.center = m_Position; return; }
-
-			Vector3 originalPos = m_Position;
-			Vector3 targetPos = originalPos + delta;
-
-			float requiredClearance = m_WallMargin * 0.95f;
-
-			// 目標位置の安全性を確認
-			GridCoord targetCell = Pathfinder::WorldToGrid(m_Map, targetPos);
-
-			if (m_Map->IsWalkable(targetCell.x, targetCell.y))
-			{
-				float targetClearance = m_Map->GetClearance(targetCell.x, targetCell.y);
-
-				// パス探索と同じか少し甘いスレッショルドで直接移動を許可
-				if (targetClearance >= requiredClearance)
-				{
-					m_Position = targetPos;
-					collider.center = m_Position;
-					return;
-				}
-			}
-
-			//移動ベクトルを縮小して再試行
-			Vector3 safePos = originalPos;
-			float deltaLength = delta.Length();
-
-			if (deltaLength < 1e-6f)
-			{
-				return;
-			}
-
-			const int steps = 5;
-			for (int i = steps; i >= 1; --i)
-			{
-				float ratio = static_cast<float>(i) / static_cast<float>(steps);
-				Vector3 testPos = originalPos + delta * ratio;
-				GridCoord testCell = Pathfinder::WorldToGrid(m_Map, testPos);
-
-				if (m_Map->IsWalkable(testCell.x, testCell.y))
-				{
-					float testClearance = m_Map->GetClearance(testCell.x, testCell.y);
-
-					if (testClearance >= requiredClearance)
-					{
-						safePos = testPos;
-						break;
-					}
-				}
-			}
-
-			// 軸別スライド処理
-			// 壁に沿って滑る処理
-			if ((safePos - originalPos).Length() < 1e-3f)
-			{
-				Vector3 slidePos = originalPos;
-				bool movedAny = false;
-
-				if (std::abs(delta.x) > 1e-6f)
-				{
-					Vector3 xOnlyMove = originalPos + Vector3(delta.x * 0.8f, 0, 0);
-					GridCoord xCell = Pathfinder::WorldToGrid(m_Map, xOnlyMove);
-
-					if (m_Map->IsWalkable(xCell.x, xCell.y))
-					{
-						float xClearance = m_Map->GetClearance(xCell.x, xCell.y);
-						if (xClearance >= requiredClearance)
-						{
-							slidePos.x = xOnlyMove.x;
-							movedAny = true;
-						}
-					}
-				}
-
-				if (std::abs(delta.z) > 1e-6f)
-				{
-					Vector3 zOnlyMove = originalPos + Vector3(0, 0, delta.z * 0.8f);
-					GridCoord zCell = Pathfinder::WorldToGrid(m_Map, zOnlyMove);
-
-					if (m_Map->IsWalkable(zCell.x, zCell.y))
-					{
-						float zClearance = m_Map->GetClearance(zCell.x, zCell.y);
-						if (zClearance >= requiredClearance)
-						{
-							slidePos.z = zOnlyMove.z;
-							movedAny = true;
-						}
-					}
-				}
-
-				if (movedAny)
-				{
-					GridCoord slideCell = Pathfinder::WorldToGrid(m_Map, slidePos);
-					if (m_Map->IsWalkable(slideCell.x, slideCell.y))
-					{
-						// 最終確認時のスレッショルドを緩めすぎると、次のフレームで抜け出せなくなるため限界値を設定
-						float slideClearance = m_Map->GetClearance(slideCell.x, slideCell.y);
-						if (slideClearance >= requiredClearance * 0.9f)
-						{
-							safePos = slidePos;
-						}
-					}
-				}
-			}
-
-			// 位置を更新
-			if ((safePos - originalPos).Length() > 1e-3f)
-			{
-				m_Position = safePos;
-			}
-			else
-			{
-				// どうしても動けない場合は速度をゼロに
-				m_Velocity = Vector3::Zero;
-			}
-
+			m_Position = targetPos;
 			collider.center = m_Position;
-		};
+			return;
+		}
+	}
 
-	tryMoveSlide(m_Velocity * deltaTime);
+	// 移動量を段階的に縮小して安全な最大距離を探す
+	Vector3 safePos = originalPos;
+	if (delta.Length() >= 1e-6f)
+	{
+		const int steps = 5;
+		for (int i = steps; i >= 1; --i)
+		{
+			Vector3 testPos = originalPos + delta * (static_cast<float>(i) / steps);
+			GridCoord testCell = Pathfinder::WorldToGrid(m_Map, testPos);
+			if (m_Map->IsWalkable(testCell.x, testCell.y) &&
+				m_Map->GetClearance(testCell.x, testCell.y) >= requiredClearance)
+			{
+				safePos = testPos;
+				break;
+			}
+		}
+	}
 
+	// 縮小でも動けない場合は軸別スライドを試みる
+	if ((safePos - originalPos).Length() < 1e-3f)
+	{
+		Vector3 slidePos = originalPos;
+		bool movedAny = false;
+
+		if (std::abs(delta.x) > 1e-6f)
+		{
+			Vector3 xMove = originalPos + Vector3(delta.x * 0.8f, 0, 0);
+			GridCoord xCell = Pathfinder::WorldToGrid(m_Map, xMove);
+			if (m_Map->IsWalkable(xCell.x, xCell.y) &&
+				m_Map->GetClearance(xCell.x, xCell.y) >= requiredClearance)
+			{
+				slidePos.x = xMove.x;
+				movedAny = true;
+			}
+		}
+
+		if (std::abs(delta.z) > 1e-6f)
+		{
+			Vector3 zMove = originalPos + Vector3(0, 0, delta.z * 0.8f);
+			GridCoord zCell = Pathfinder::WorldToGrid(m_Map, zMove);
+			if (m_Map->IsWalkable(zCell.x, zCell.y) &&
+				m_Map->GetClearance(zCell.x, zCell.y) >= requiredClearance)
+			{
+				slidePos.z = zMove.z;
+				movedAny = true;
+			}
+		}
+
+		if (movedAny)
+		{
+			GridCoord slideCell = Pathfinder::WorldToGrid(m_Map, slidePos);
+			// 最終確認時のスレッショルドを緩めすぎると次フレームで抜け出せなくなるため限界値を設定
+			if (m_Map->IsWalkable(slideCell.x, slideCell.y) &&
+				m_Map->GetClearance(slideCell.x, slideCell.y) >= requiredClearance * 0.9f)
+			{
+				safePos = slidePos;
+			}
+		}
+	}
+
+	if ((safePos - originalPos).Length() > 1e-3f)
+		m_Position = safePos;
+	else
+		m_Velocity = Vector3::Zero; // どうしても動けない場合は停止
+
+	collider.center = m_Position;
 }
 
 
@@ -1155,72 +1140,42 @@ bool Enemy::ChooseNextSearchTarget()
 		}
 	}
 
-	// 候補セルをスコアリング
-	struct CandidateCell
+	// 候補セルをスコアリングするローカルヘルパー
+	struct CandidateCell { GridCoord coord; float score; };
+
+	auto buildCandidates = [&](bool skipVisited) -> std::vector<CandidateCell>
 	{
-		GridCoord coord;
-		float score;
-	};
-
-	std::vector<CandidateCell> candidates;
-
-	for (int x = 0; x < m_Map->GetSizeX(); ++x)
-	{
-		for (int y = 0; y < m_Map->GetSizeY(); ++y)
-		{
-			int index = x * m_Map->GetSizeY() + y;
-
-			if (!m_Map->IsWalkable(x, y)) continue;
-			if (m_Visited.find(index) != m_Visited.end()) continue;
-
-			CandidateCell candidate;
-			candidate.coord = { x, y };
-			candidate.score = 100.0f; // 基本スコア
-
-			// 最近訪問したセルはスコアを大幅に減少
-			if (recentlyVisited.find(index) != recentlyVisited.end())
-			{
-				candidate.score -= 80.0f;
-			}
-
-			// 現在位置から遠いセルを優先
-			Vector3 candidateWorld = Pathfinder::GridToWorld(m_Map, candidate.coord);
-			float distanceFromCurrent = (candidateWorld - m_Position).Length();
-			candidate.score += distanceFromCurrent * 0.01f;
-
-			candidates.push_back(candidate);
-		}
-	}
-
-	// 全セル訪問済みなら訪問セットをクリア
-	if (candidates.empty())
-	{
-		m_Visited.clear();
-
+		std::vector<CandidateCell> result;
 		for (int x = 0; x < m_Map->GetSizeX(); ++x)
 		{
 			for (int y = 0; y < m_Map->GetSizeY(); ++y)
 			{
 				int index = x * m_Map->GetSizeY() + y;
 				if (!m_Map->IsWalkable(x, y)) continue;
+				if (skipVisited && m_Visited.find(index) != m_Visited.end()) continue;
 
 				CandidateCell candidate;
 				candidate.coord = { x, y };
 				candidate.score = 100.0f;
 
 				if (recentlyVisited.find(index) != recentlyVisited.end())
-				{
 					candidate.score -= 80.0f;
-				}
 
 				Vector3 candidateWorld = Pathfinder::GridToWorld(m_Map, candidate.coord);
-				float distanceFromCurrent = (candidateWorld - m_Position).Length();
-				candidate.score += distanceFromCurrent * 0.01f;
+				candidate.score += (candidateWorld - m_Position).Length() * 0.01f;
 
-				candidates.push_back(candidate);
+				result.push_back(candidate);
 			}
 		}
+		return result;
+	};
 
+	// 未訪問セルから候補を作成。全訪問済みなら訪問セットをリセットして再スキャン
+	std::vector<CandidateCell> candidates = buildCandidates(true);
+	if (candidates.empty())
+	{
+		m_Visited.clear();
+		candidates = buildCandidates(false);
 		if (candidates.empty()) return false;
 	}
 
@@ -1354,46 +1309,9 @@ void Enemy::DrawDebugWaypoints() const
 	auto pCamera = Game::GetInstance().GetMainCamera();
 
 
-	// --- 描画ステートの完全な保存 (SimpleBoxCollider::DrawDebugCollider と同じ) ---
-	ID3D11RasterizerState* prevRasterState = nullptr;
-	ID3D11DepthStencilState* prevDepthState = nullptr;
-	UINT                     prevStencilRef = 0;
-	ID3D11BlendState* prevBlendState = nullptr;
-	float                    prevBlendFactor[4] = { 0.0f };
-	UINT                     prevSampleMask = 0;
-	ID3D11InputLayout* prevInputLayout = nullptr;
-	D3D11_PRIMITIVE_TOPOLOGY prevTopology;
-	ID3D11VertexShader* prevVS = nullptr;
-	ID3D11ClassInstance* prevVSClassInstances[256] = { nullptr };
-	UINT                     numVSClassInstances = 256;
-	ID3D11PixelShader* prevPS = nullptr;
-	ID3D11ClassInstance* prevPSClassInstances[256] = { nullptr };
-	UINT                     numPSClassInstances = 256;
-	ID3D11Buffer* prevVB[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	UINT prevStride[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	UINT prevOffset[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	ID3D11Buffer* prevIB = nullptr;
-	DXGI_FORMAT              prevIBFmt = DXGI_FORMAT_UNKNOWN;
-	UINT                     prevIBOfs = 0;
-	ID3D11Buffer* prevVSCB[4] = {};
-	ID3D11Buffer* prevPSCB[4] = {};
-	ID3D11ShaderResourceView* prevPSRV[4] = {};
-	ID3D11SamplerState* prevPSSamp[4] = {};
-
-	context->RSGetState(&prevRasterState);
-	context->OMGetDepthStencilState(&prevDepthState, &prevStencilRef);
-	context->OMGetBlendState(&prevBlendState, prevBlendFactor, &prevSampleMask);
-	context->IAGetInputLayout(&prevInputLayout);
-	context->IAGetPrimitiveTopology(&prevTopology);
-	context->VSGetShader(&prevVS, prevVSClassInstances, &numVSClassInstances);
-	context->PSGetShader(&prevPS, prevPSClassInstances, &numPSClassInstances);
-	context->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, prevVB, prevStride, prevOffset);
-	context->IAGetIndexBuffer(&prevIB, &prevIBFmt, &prevIBOfs);
-	context->VSGetConstantBuffers(0, 4, prevVSCB);
-	context->PSGetConstantBuffers(0, 4, prevPSCB);
-	context->PSGetShaderResources(0, 4, prevPSRV);
-	context->PSGetSamplers(0, 4, prevPSSamp);
-	// --- 保存ここまで ---
+	// --- 描画ステートの保存 ---
+	D3D11DebugState saved{};
+	SaveD3D11DebugState(context, saved);
 
 
 	// --- デバッグ描画の開始 ---
@@ -1452,39 +1370,8 @@ void Enemy::DrawDebugWaypoints() const
 	batch.End();
 
 
-	// --- 描画ステートの復元---
-	context->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, prevVB, prevStride, prevOffset);
-	context->IASetIndexBuffer(prevIB, prevIBFmt, prevIBOfs);
-	for (auto* b : prevVB) if (b) b->Release();
-	if (prevIB) prevIB->Release();
-
-	context->VSSetConstantBuffers(0, 4, prevVSCB);
-	context->PSSetConstantBuffers(0, 4, prevPSCB);
-	for (auto* b : prevVSCB) if (b) b->Release();
-	for (auto* b : prevPSCB) if (b) b->Release();
-
-	context->PSSetShaderResources(0, 4, prevPSRV);
-	context->PSSetSamplers(0, 4, prevPSSamp);
-	for (auto* v : prevPSRV)   if (v) v->Release();
-	for (auto* s : prevPSSamp) if (s) s->Release();
-
-	context->RSSetState(prevRasterState);
-	context->OMSetDepthStencilState(prevDepthState, prevStencilRef);
-	context->OMSetBlendState(prevBlendState, prevBlendFactor, prevSampleMask);
-	context->IASetInputLayout(prevInputLayout);
-	context->IASetPrimitiveTopology(prevTopology);
-	context->VSSetShader(prevVS, prevVSClassInstances, numVSClassInstances);
-	context->PSSetShader(prevPS, prevPSClassInstances, numPSClassInstances);
-
-	if (prevRasterState) prevRasterState->Release();
-	if (prevDepthState) prevDepthState->Release();
-	if (prevBlendState) prevBlendState->Release();
-	if (prevInputLayout) prevInputLayout->Release();
-	if (prevVS) prevVS->Release();
-	for (UINT i = 0; i < numVSClassInstances; ++i) { if (prevVSClassInstances[i]) prevVSClassInstances[i]->Release(); }
-	if (prevPS) prevPS->Release();
-	for (UINT i = 0; i < numPSClassInstances; ++i) { if (prevPSClassInstances[i]) prevPSClassInstances[i]->Release(); }
-	// --- 復元ここまで ---
+	// --- 描画ステートの復元 ---
+	RestoreD3D11DebugState(context, saved);
 }
 
 
@@ -1506,45 +1393,8 @@ void Enemy::DrawDebugVision() const
 	auto pCamera = Game::GetInstance().GetMainCamera();
 
 	// --- 描画ステートの保存 ---
-	ID3D11RasterizerState* prevRasterState = nullptr;
-	ID3D11DepthStencilState* prevDepthState = nullptr;
-	UINT                     prevStencilRef = 0;
-	ID3D11BlendState* prevBlendState = nullptr;
-	float                    prevBlendFactor[4] = { 0.0f };
-	UINT                     prevSampleMask = 0;
-	ID3D11InputLayout* prevInputLayout = nullptr;
-	D3D11_PRIMITIVE_TOPOLOGY prevTopology;
-	ID3D11VertexShader* prevVS = nullptr;
-	ID3D11ClassInstance* prevVSClassInstances[256] = { nullptr };
-	UINT                     numVSClassInstances = 256;
-	ID3D11PixelShader* prevPS = nullptr;
-	ID3D11ClassInstance* prevPSClassInstances[256] = { nullptr };
-	UINT                     numPSClassInstances = 256;
-	ID3D11Buffer* prevVB[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	UINT prevStride[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	UINT prevOffset[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	ID3D11Buffer* prevIB = nullptr;
-	DXGI_FORMAT              prevIBFmt = DXGI_FORMAT_UNKNOWN;
-	UINT                     prevIBOfs = 0;
-	ID3D11Buffer* prevVSCB[4] = {};
-	ID3D11Buffer* prevPSCB[4] = {};
-	ID3D11ShaderResourceView* prevPSRV[4] = {};
-	ID3D11SamplerState* prevPSSamp[4] = {};
-
-	context->RSGetState(&prevRasterState);
-	context->OMGetDepthStencilState(&prevDepthState, &prevStencilRef);
-	context->OMGetBlendState(&prevBlendState, prevBlendFactor, &prevSampleMask);
-	context->IAGetInputLayout(&prevInputLayout);
-	context->IAGetPrimitiveTopology(&prevTopology);
-	context->VSGetShader(&prevVS, prevVSClassInstances, &numVSClassInstances);
-	context->PSGetShader(&prevPS, prevPSClassInstances, &numPSClassInstances);
-	context->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, prevVB, prevStride, prevOffset);
-	context->IAGetIndexBuffer(&prevIB, &prevIBFmt, &prevIBOfs);
-	context->VSGetConstantBuffers(0, 4, prevVSCB);
-	context->PSGetConstantBuffers(0, 4, prevPSCB);
-	context->PSGetShaderResources(0, 4, prevPSRV);
-	context->PSGetSamplers(0, 4, prevPSSamp);
-
+	D3D11DebugState saved{};
+	SaveD3D11DebugState(context, saved);
 
 	// --- デバッグ描画の開始 ---
 	// ワールド座標系で描画
@@ -1624,37 +1474,8 @@ void Enemy::DrawDebugVision() const
 	batch.End();
 
 
-	//描画ステート復元
-	context->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, prevVB, prevStride, prevOffset);
-	context->IASetIndexBuffer(prevIB, prevIBFmt, prevIBOfs);
-	for (auto* b : prevVB) if (b) b->Release();
-	if (prevIB) prevIB->Release();
-
-	context->VSSetConstantBuffers(0, 4, prevVSCB);
-	context->PSSetConstantBuffers(0, 4, prevPSCB);
-	for (auto* b : prevVSCB) if (b) b->Release();
-	for (auto* b : prevPSCB) if (b) b->Release();
-
-	context->PSSetShaderResources(0, 4, prevPSRV);
-	context->PSSetSamplers(0, 4, prevPSSamp);
-	for (auto* v : prevPSRV)   if (v) v->Release();
-	for (auto* s : prevPSSamp) if (s) s->Release();
-	context->RSSetState(prevRasterState);
-	context->OMSetDepthStencilState(prevDepthState, prevStencilRef);
-	context->OMSetBlendState(prevBlendState, prevBlendFactor, prevSampleMask);
-	context->IASetInputLayout(prevInputLayout);
-	context->IASetPrimitiveTopology(prevTopology);
-	context->VSSetShader(prevVS, prevVSClassInstances, numVSClassInstances);
-	context->PSSetShader(prevPS, prevPSClassInstances, numPSClassInstances);
-
-	if (prevRasterState) prevRasterState->Release();
-	if (prevDepthState) prevDepthState->Release();
-	if (prevBlendState) prevBlendState->Release();
-	if (prevInputLayout) prevInputLayout->Release();
-	if (prevVS) prevVS->Release();
-	for (UINT i = 0; i < numVSClassInstances; ++i) { if (prevVSClassInstances[i]) prevVSClassInstances[i]->Release(); }
-	if (prevPS) prevPS->Release();
-	for (UINT i = 0; i < numPSClassInstances; ++i) { if (prevPSClassInstances[i]) prevPSClassInstances[i]->Release(); }
+	// --- 描画ステートの復元 ---
+	RestoreD3D11DebugState(context, saved);
 }
 
 void Enemy::DrawDebugWhiskerLines()
@@ -1669,45 +1490,9 @@ void Enemy::DrawDebugWhiskerLines()
 	auto  inputLayout = SimpleBoxCollider::m_InputLayout.Get();
 	auto pCamera = Game::GetInstance().GetMainCamera();
 
-	// --- 描画ステートの保存 (DrawDebugVisionからコピー) ---
-	ID3D11RasterizerState* prevRasterState = nullptr;
-	ID3D11DepthStencilState* prevDepthState = nullptr;
-	UINT                     prevStencilRef = 0;
-	ID3D11BlendState* prevBlendState = nullptr;
-	float                    prevBlendFactor[4] = { 0.0f };
-	UINT                     prevSampleMask = 0;
-	ID3D11InputLayout* prevInputLayout = nullptr;
-	D3D11_PRIMITIVE_TOPOLOGY prevTopology;
-	ID3D11VertexShader* prevVS = nullptr;
-	ID3D11ClassInstance* prevVSClassInstances[256] = { nullptr };
-	UINT                     numVSClassInstances = 256;
-	ID3D11PixelShader* prevPS = nullptr;
-	ID3D11ClassInstance* prevPSClassInstances[256] = { nullptr };
-	UINT                     numPSClassInstances = 256;
-	ID3D11Buffer* prevVB[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	UINT prevStride[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	UINT prevOffset[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
-	ID3D11Buffer* prevIB = nullptr;
-	DXGI_FORMAT              prevIBFmt = DXGI_FORMAT_UNKNOWN;
-	UINT                     prevIBOfs = 0;
-	ID3D11Buffer* prevVSCB[4] = {};
-	ID3D11Buffer* prevPSCB[4] = {};
-	ID3D11ShaderResourceView* prevPSRV[4] = {};
-	ID3D11SamplerState* prevPSSamp[4] = {};
-
-	context->RSGetState(&prevRasterState);
-	context->OMGetDepthStencilState(&prevDepthState, &prevStencilRef);
-	context->OMGetBlendState(&prevBlendState, prevBlendFactor, &prevSampleMask);
-	context->IAGetInputLayout(&prevInputLayout);
-	context->IAGetPrimitiveTopology(&prevTopology);
-	context->VSGetShader(&prevVS, prevVSClassInstances, &numVSClassInstances);
-	context->PSGetShader(&prevPS, prevPSClassInstances, &numPSClassInstances);
-	context->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, prevVB, prevStride, prevOffset);
-	context->IAGetIndexBuffer(&prevIB, &prevIBFmt, &prevIBOfs);
-	context->VSGetConstantBuffers(0, 4, prevVSCB);
-	context->PSGetConstantBuffers(0, 4, prevPSCB);
-	context->PSGetShaderResources(0, 4, prevPSRV);
-	context->PSGetSamplers(0, 4, prevPSSamp);
+	// --- 描画ステートの保存 ---
+	D3D11DebugState saved{};
+	SaveD3D11DebugState(context, saved);
 
 	// --- デバッグ描画の開始 ---
 	effect.SetWorld(Matrix::Identity);
@@ -1760,37 +1545,8 @@ void Enemy::DrawDebugWhiskerLines()
 
 	batch.End();
 
-	// --- ステート復元 ---
-	context->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, prevVB, prevStride, prevOffset);
-	context->IASetIndexBuffer(prevIB, prevIBFmt, prevIBOfs);
-	for (auto* b : prevVB) if (b) b->Release();
-	if (prevIB) prevIB->Release();
-
-	context->VSSetConstantBuffers(0, 4, prevVSCB);
-	context->PSSetConstantBuffers(0, 4, prevPSCB);
-	for (auto* b : prevVSCB) if (b) b->Release();
-	for (auto* b : prevPSCB) if (b) b->Release();
-
-	context->PSSetShaderResources(0, 4, prevPSRV);
-	context->PSSetSamplers(0, 4, prevPSSamp);
-	for (auto* v : prevPSRV)   if (v) v->Release();
-	for (auto* s : prevPSSamp) if (s) s->Release();
-	context->RSSetState(prevRasterState);
-	context->OMSetDepthStencilState(prevDepthState, prevStencilRef);
-	context->OMSetBlendState(prevBlendState, prevBlendFactor, prevSampleMask);
-	context->IASetInputLayout(prevInputLayout);
-	context->IASetPrimitiveTopology(prevTopology);
-	context->VSSetShader(prevVS, prevVSClassInstances, numVSClassInstances);
-	context->PSSetShader(prevPS, prevPSClassInstances, numPSClassInstances);
-
-	if (prevRasterState) prevRasterState->Release();
-	if (prevDepthState) prevDepthState->Release();
-	if (prevBlendState) prevBlendState->Release();
-	if (prevInputLayout) prevInputLayout->Release();
-	if (prevVS) prevVS->Release();
-	for (UINT i = 0; i < numVSClassInstances; ++i) { if (prevVSClassInstances[i]) prevVSClassInstances[i]->Release(); }
-	if (prevPS) prevPS->Release();
-	for (UINT i = 0; i < numPSClassInstances; ++i) { if (prevPSClassInstances[i]) prevPSClassInstances[i]->Release(); }
+	// --- 描画ステートの復元 ---
+	RestoreD3D11DebugState(context, saved);
 }
 
 

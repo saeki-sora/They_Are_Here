@@ -50,8 +50,6 @@ void Game::Init()
 	SceneManager::GetInstance().RegisterScene<GameClearScene>();
 	SceneManager::GetInstance().RegisterScene<GameOverScene>();
 
-	DebugManager::Create();// チェックマネージャーの作成
-
 	SimpleBoxCollider::InitDebugDraw(Renderer::GetDevice(), Renderer::GetDeviceContext()); // コライダーの初期化
 	EffectManager::GetInstance().Init();//エフェクトの初期化
 	ConfigManager::GetInstance().Load("json/enemy_param.json");//設定ファイル読み込み
@@ -88,6 +86,9 @@ void Game::Draw()
 	// ImGui フレーム開始
 	ImGUI_Manager::BeginFrame();
 
+	// デバッグUI（このフレームの3D描画・ポストプロセスより先に値を確定させる）
+	ImGUI_Manager::DrawPanels();
+
 	// 描画前の処理
 	// シャドウパス（カメラ位置を中心に影を生成する）
 	Renderer::BeginShadowPass(m_MainCamera->GetPosition());
@@ -112,9 +113,6 @@ void Game::Draw()
 
 	SceneManager::GetInstance().DrawTransition();//トランジション描画
 
-	// デバッグUI
-	ImGUI_Manager::DrawPanels();
-
 	// 描画後の処理
 	Renderer::End();
 }
@@ -132,8 +130,6 @@ void Game::Uninit()
 	SoundManager::GetInstance().Uninit();//サウンドマネージャー終了処理
 
 	EffectManager::GetInstance().Uninit();
-
-	DebugManager::Destroy();
 
 	// カメラ終了処理
 	m_MainCamera->Uninit();

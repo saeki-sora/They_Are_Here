@@ -9,7 +9,7 @@ struct PS_INPUT
 
 float4 ps_main(PS_INPUT input) : SV_Target
 {
-    // ƒeƒNƒXƒ`ƒƒ‚ğg‚¤‚È‚ç
+    // ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚’ä½¿ã†ãªã‚‰
     float4 c = shaderTexture.Sample(samplerState, input.Tex);
     c.a = 1.0;
     return c;

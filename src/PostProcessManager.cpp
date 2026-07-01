@@ -3,6 +3,12 @@
 #include "Application.h"
 #include "dx11helper.h"
 #include "imgui.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
+
+// グラフィック設定の保存先
+static constexpr const char* GRAPHICS_SETTINGS_PATH = "json/graphics_param.json";
 
 using namespace DirectX::SimpleMath;
 using Microsoft::WRL::ComPtr;
@@ -81,6 +87,106 @@ void PostProcessManager::Init()
 	}
 
 	m_IsInitialized = true;
+
+	// 前回保存した設定があれば読み込む（無ければ既定値のまま）
+	LoadSettings(GRAPHICS_SETTINGS_PATH);
+}
+
+// 現在のグラフィック設定をJSONファイルへ保存する
+void PostProcessManager::SaveSettings(const std::string& filePath)
+{
+	json data;
+	data["Enabled"] = m_Enabled;
+	data["TonemapBypass"] = m_TonemapBypass;
+	data["BloomEnabled"] = m_BloomEnabled;
+	data["FXAAEnabled"] = m_FXAAEnabled;
+	data["SSAOEnabled"] = m_SSAOEnabled;
+	data["VolumetricEnabled"] = m_VolumetricEnabled;
+	data["Exposure"] = m_Exposure;
+	data["Saturation"] = m_Saturation;
+	data["BloomThreshold"] = m_BloomThreshold;
+	data["BloomKnee"] = m_BloomKnee;
+	data["BloomIntensity"] = m_BloomIntensity;
+	data["VignetteIntensity"] = m_VignetteIntensity;
+	data["VignettePower"] = m_VignettePower;
+	data["GrainIntensity"] = m_GrainIntensity;
+	data["TintStrength"] = m_TintStrength;
+	data["TintColor"] = { m_TintColor.x, m_TintColor.y, m_TintColor.z };
+	data["SSAORadius"] = m_SSAORadius;
+	data["SSAOIntensity"] = m_SSAOIntensity;
+	data["SSAOBias"] = m_SSAOBias;
+	data["VolumetricIntensity"] = m_VolumetricIntensity;
+	data["VolumetricSteps"] = m_VolumetricSteps;
+	data["VolumetricMaxDist"] = m_VolumetricMaxDist;
+	data["NormalMapStrength"] = Renderer::GetNormalMapStrength();
+
+	std::ofstream file(filePath);
+	if (!file.is_open())
+	{
+		std::cerr << "[PostProcessManager] Error: 書き込めません: " << filePath << std::endl;
+		return;
+	}
+	file << data.dump(2);
+
+#ifdef _DEBUG
+	std::cout << "[PostProcessManager] グラフィック設定を保存しました: " << filePath << std::endl;
+#endif
+}
+
+// JSONファイルからグラフィック設定を読み込む
+void PostProcessManager::LoadSettings(const std::string& filePath)
+{
+	std::ifstream file(filePath);
+	if (!file.is_open()) return; // 保存ファイルが無い場合は既定値のまま
+
+	json data;
+	try
+	{
+		file >> data;
+	}
+	catch (json::parse_error& e)
+	{
+		std::cerr << "[PostProcessManager] JSONパースエラー: " << e.what() << std::endl;
+		return;
+	}
+
+	m_Enabled = data.value("Enabled", m_Enabled);
+	m_TonemapBypass = data.value("TonemapBypass", m_TonemapBypass);
+	m_BloomEnabled = data.value("BloomEnabled", m_BloomEnabled);
+	m_FXAAEnabled = data.value("FXAAEnabled", m_FXAAEnabled);
+	m_SSAOEnabled = data.value("SSAOEnabled", m_SSAOEnabled);
+	m_VolumetricEnabled = data.value("VolumetricEnabled", m_VolumetricEnabled);
+	m_Exposure = data.value("Exposure", m_Exposure);
+	m_Saturation = data.value("Saturation", m_Saturation);
+	m_BloomThreshold = data.value("BloomThreshold", m_BloomThreshold);
+	m_BloomKnee = data.value("BloomKnee", m_BloomKnee);
+	m_BloomIntensity = data.value("BloomIntensity", m_BloomIntensity);
+	m_VignetteIntensity = data.value("VignetteIntensity", m_VignetteIntensity);
+	m_VignettePower = data.value("VignettePower", m_VignettePower);
+	m_GrainIntensity = data.value("GrainIntensity", m_GrainIntensity);
+	m_TintStrength = data.value("TintStrength", m_TintStrength);
+
+	if (data.contains("TintColor") && data["TintColor"].is_array() && data["TintColor"].size() == 3)
+	{
+		m_TintColor = Vector3(
+			data["TintColor"][0].get<float>(),
+			data["TintColor"][1].get<float>(),
+			data["TintColor"][2].get<float>());
+	}
+
+	m_SSAORadius = data.value("SSAORadius", m_SSAORadius);
+	m_SSAOIntensity = data.value("SSAOIntensity", m_SSAOIntensity);
+	m_SSAOBias = data.value("SSAOBias", m_SSAOBias);
+	m_VolumetricIntensity = data.value("VolumetricIntensity", m_VolumetricIntensity);
+	m_VolumetricSteps = data.value("VolumetricSteps", m_VolumetricSteps);
+	m_VolumetricMaxDist = data.value("VolumetricMaxDist", m_VolumetricMaxDist);
+
+	float normalStrength = data.value("NormalMapStrength", Renderer::GetNormalMapStrength());
+	Renderer::SetNormalMapStrength(normalStrength);
+
+#ifdef _DEBUG
+	std::cout << "[PostProcessManager] グラフィック設定を読み込みました: " << filePath << std::endl;
+#endif
 }
 
 // 終了処理（ComPtrなので明示解放は不要）
@@ -516,5 +622,39 @@ void PostProcessManager::DrawImGui()
 		{
 			Renderer::SetNormalMapStrength(normalStrength);
 		}
+	}
+
+	ImGui::Separator();
+
+	// 現在の設定をJSONファイルに保存
+	if (ImGui::Button("Save JSON", ImVec2(-1, 0)))
+	{
+		SaveSettings(GRAPHICS_SETTINGS_PATH);
+		ImGui::OpenPopup("graphics_saved_popup");
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Write current values to graphics_param.json");
+
+	if (ImGui::BeginPopup("graphics_saved_popup"))
+	{
+		ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Saved to graphics_param.json");
+		ImGui::EndPopup();
+	}
+
+	ImGui::Spacing();
+
+	// 保存済みのJSONファイルから設定を読み直す
+	if (ImGui::Button("Load JSON", ImVec2(-1, 0)))
+	{
+		LoadSettings(GRAPHICS_SETTINGS_PATH);
+		ImGui::OpenPopup("graphics_loaded_popup");
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Reload values from graphics_param.json");
+
+	if (ImGui::BeginPopup("graphics_loaded_popup"))
+	{
+		ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Loaded from graphics_param.json");
+		ImGui::EndPopup();
 	}
 }

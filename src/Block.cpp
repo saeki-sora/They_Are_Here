@@ -85,7 +85,7 @@ void Block::Init()
 		mat.TextureEnable = true;
 		std::unique_ptr<Material> m = std::make_unique<Material>();
 		m->Create(mat);
-		m_Materiales.push_back(std::move(m));
+		m_Materials.push_back(std::move(m));
 	}
 }
 
@@ -130,9 +130,9 @@ void Block::Draw()
 	for (int i = 0; i < m_subsets.size(); ++i)
 	{
 		// マテリアルをセット
-		m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
+		m_Materials[m_subsets[i].MaterialIdx]->SetGPU();
 
-		if (m_Materiales[m_subsets[i].MaterialIdx]->isTextureEnable())
+		if (m_Materials[m_subsets[i].MaterialIdx]->isTextureEnable())
 		{
 			m_Textures[m_subsets[i].MaterialIdx]->SetGPU();
 		}

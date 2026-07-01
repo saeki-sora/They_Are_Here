@@ -9,7 +9,7 @@ class Pole :public ColliderObject
 {
 private:
 
-	bool IsGoal = false; //ゴールフラグ
+	bool m_IsGoal = false; //ゴールフラグ
 
 public:
 
@@ -24,8 +24,8 @@ public:
 	void Draw()override;
 	void Uninit()override;
 
-	bool GetGoalFlag() const { return IsGoal; }// ゴールフラグの取得
-	void SetPosition(const DirectX::SimpleMath::Vector3& pos) { m_Position = pos; }
+	bool GetGoalFlag() const;// ゴールフラグの取得
+	void SetPosition(const DirectX::SimpleMath::Vector3& pos);
 
 };
 

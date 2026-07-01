@@ -90,7 +90,7 @@ void Player::Init()
 		m->Create(materials[i]);
 
 		// マテリアルオブジェクトを配列に追加
-		m_Materiales.push_back(std::move(m));
+		m_Materials.push_back(std::move(m));
 	}
 }
 
@@ -138,41 +138,49 @@ bool Player::CheckCollisionWithBlocks(const Vector3& newPosition)
 //=======================================
 void Player::Update(float deltaTime)
 {
-
 	collider.rotation = DirectX::SimpleMath::Quaternion::Identity;
-	collider.center = m_Position; // コライダーの中心位置を更新
+	collider.center = m_Position;
 
-	// Fキーで透明化発動
+	// F キーで透明化発動
 	if (Input::GetKeyTrigger('F'))
 	{
 		if (!m_IsInvisible && m_InvisibleStock > 0)
 		{
-			m_InvisibleStock--; // 減らすだけ。表示は関知しない
+			m_InvisibleStock--;
 			StartInvisible(10.0f);
-
-			EffectManager::GetInstance().StartEffect<InvisibleEffect>(m_InvisibleTime);//透明化エフェクト開始
+			EffectManager::GetInstance().StartEffect<InvisibleEffect>(m_InvisibleTime);
 		}
 	}
 
-
-	//透明化タイマー処理
+	// 透明化タイマー処理
 	if (m_IsInvisible)
 	{
 		m_InvisibleTimer -= deltaTime;
-
 		if (m_InvisibleTimer <= 0.0f)
 		{
 			m_IsInvisible = false;
 			m_InvisibleTimer = 0.0f;
-			//std::cout << "!!! POWER UP EXPIRED !!!\n";
 		}
 	}
 
-	// 移動可能フラグが立っている場合のみ処理を行う
 	if (!m_CanMove) return;
 
+	UpdateWallBreak(deltaTime);
+	UpdateLook();
+	UpdateDashAndStamina(deltaTime);
+	UpdateMovement(deltaTime);
 
-	// 壁破壊チャージ処理
+	if (m_IsGoal) return;
+
+	UpdateStaminaRegen(deltaTime);
+	UpdateGoalCheck();
+}
+
+//=======================================
+// 壁破壊チャージ処理
+//=======================================
+void Player::UpdateWallBreak(float deltaTime)
+{
 	bool currentButtonState = Input::GetKeyPress(VK_LBUTTON);
 
 	if (currentButtonState)
@@ -184,7 +192,6 @@ void Player::Update(float deltaTime)
 		else if (!m_IsChargingBreak)
 		{
 			m_TargetBlock = GetBlockInFront();
-
 			if (auto block = m_TargetBlock.lock())
 			{
 				m_IsChargingBreak = true;
@@ -195,9 +202,7 @@ void Player::Update(float deltaTime)
 		}
 		else
 		{
-			// チャージ継続中
 			m_BreakChargeTimer += deltaTime;
-
 			if (m_BreakChargeTimer >= WALL_BREAK_CHARGE_TIME)
 			{
 				TryBreakWall();
@@ -216,24 +221,27 @@ void Player::Update(float deltaTime)
 			m_BreakChargeTimer = 0.0f;
 			m_TargetBlock.reset();
 		}
-
 		m_WallBreakJustCompleted = false;
 	}
+}
 
-	// マウスキャプチャ状態時のみマウス操作を処理
+//=======================================
+// マウス視点回転処理（m_Rotation.y / m_Pitch / m_Forward を更新する）
+//=======================================
+void Player::UpdateLook()
+{
 	if (m_MouseCaptured)
 	{
 		int mouseX, mouseY;
 		Input::GetMouseMove(&mouseX, &mouseY);
 
-		if (m_IsChargingBreak) // 破壊チャージ中は視点回転を制限
+		if (m_IsChargingBreak)
 		{
+			// チャージ中は視点回転を制限
 			float desiredYaw = m_Rotation.y + mouseX * m_MouseSensitivity;
 			float yawOffset = desiredYaw - m_ChargeStartYaw;
-
-			while (yawOffset > DirectX::XM_PI) yawOffset -= DirectX::XM_2PI;
+			while (yawOffset >  DirectX::XM_PI) yawOffset -= DirectX::XM_2PI;
 			while (yawOffset < -DirectX::XM_PI) yawOffset += DirectX::XM_2PI;
-
 			yawOffset = std::clamp(yawOffset, -MAX_YAW_OFFSET, MAX_YAW_OFFSET);
 			m_Rotation.y = m_ChargeStartYaw + yawOffset;
 
@@ -241,55 +249,39 @@ void Player::Update(float deltaTime)
 			float pitchOffset = desiredPitch - m_ChargeStartPitch;
 			pitchOffset = std::clamp(pitchOffset, -MAX_PITCH_OFFSET, MAX_PITCH_OFFSET);
 			m_Pitch = m_ChargeStartPitch + pitchOffset;
-
-			const float maxPitch = DirectX::XM_PIDIV2 - 0.1f;
-			m_Pitch = std::clamp(m_Pitch, -maxPitch, maxPitch);
 		}
-		else // 通常時は自由な視点回転
+		else
 		{
 			m_Rotation.y += mouseX * m_MouseSensitivity;
 			m_Pitch -= mouseY * m_MouseSensitivity;
-
-			const float maxPitch = DirectX::XM_PIDIV2 - 0.1f;
-			m_Pitch = std::clamp(m_Pitch, -maxPitch, maxPitch);
 		}
+
+		const float maxPitch = DirectX::XM_PIDIV2 - 0.1f;
+		m_Pitch = std::clamp(m_Pitch, -maxPitch, maxPitch);
 	}
 
-	// プレイヤーの前方向ベクトルを計算！Y軸回転のみ使用、移動用
+	// 前方ベクトルを計算（Y軸回転のみ、移動用）
 	Matrix rotM = Matrix::CreateRotationY(m_Rotation.y);
 	m_Forward = Vector3::Transform(Vector3::UnitZ, rotM);
 	m_Forward.Normalize();
+}
 
-	// 地面移動に限る
-	Vector3 forwardFlat = m_Forward;
-	forwardFlat.y = 0.0f;
-	if (forwardFlat.LengthSquared() < 1e-6f) forwardFlat = Vector3::UnitZ;
-	forwardFlat.Normalize();
-
-	const Vector3 up(0.0f, 1.0f, 0.0f);
-	const Vector3 right = up.Cross(forwardFlat);
-
-	// ダッシュ判定
+//=======================================
+// ダッシュ・スタミナ処理
+//=======================================
+void Player::UpdateDashAndStamina(float deltaTime)
+{
 	bool wantsMove = Input::GetKeyPress('W') || Input::GetKeyPress('S') ||
 	                 Input::GetKeyPress('A') || Input::GetKeyPress('D');
 	bool wantsDash = Input::GetKeyPress(VK_SHIFT) && wantsMove && !m_IsChargingBreak;
-	bool shiftHeld = Input::GetKeyPress(VK_SHIFT);
 
-	// Shift を離したらダッシュロックを解除
-	if (!shiftHeld)
-	{
+	if (!Input::GetKeyPress(VK_SHIFT))
 		m_DashLocked = false;
-	}
 
-	// 枯渇ペナルティのタイマー処理
 	if (m_IsExhausted)
 	{
 		m_ExhaustedTimer -= deltaTime;
-		if (m_ExhaustedTimer <= 0.0f)
-		{
-			m_IsExhausted    = false;
-			m_ExhaustedTimer = 0.0f;
-		}
+		if (m_ExhaustedTimer <= 0.0f) { m_IsExhausted = false; m_ExhaustedTimer = 0.0f; }
 	}
 
 	if (wantsDash && !m_IsExhausted && !m_DashLocked && m_Stamina > 0.0f)
@@ -298,11 +290,11 @@ void Player::Update(float deltaTime)
 		m_Stamina -= STAMINA_DRAIN_RATE * deltaTime;
 		if (m_Stamina <= 0.0f)
 		{
-			m_Stamina        = 0.0f;
-			m_IsExhausted    = true;
+			m_Stamina = 0.0f;
+			m_IsExhausted = true;
 			m_ExhaustedTimer = EXHAUSTED_COOLDOWN;
-			m_DashLocked     = true;
-			m_IsDashing      = false;
+			m_DashLocked = true;
+			m_IsDashing = false;
 		}
 	}
 	else
@@ -310,21 +302,30 @@ void Player::Update(float deltaTime)
 		m_IsDashing = false;
 	}
 
-	float currentSpeed = m_MoveSpeed * (m_IsDashing ? DASH_SPEED_MULT : 1.0f);
-
 	// ダッシュエフェクト制御
 	if (m_IsDashing && !m_DashEffect)
 	{
 		m_DashEffect = EffectManager::GetInstance().StartEffect<DashEffect>();
-		// EffectManager が削除する直前にコールバックでポインタを無効化
 		m_DashEffect->SetOnComplete([this]() { m_DashEffect = nullptr; });
 	}
 	if (m_DashEffect)
-	{
 		m_DashEffect->SetActive(m_IsDashing);
-	}
+}
 
-	// キーボード入力による移動チャージ中は移動不可
+//=======================================
+// 移動・当たり判定処理
+//=======================================
+void Player::UpdateMovement(float deltaTime)
+{
+	Vector3 forwardFlat = m_Forward;
+	forwardFlat.y = 0.0f;
+	if (forwardFlat.LengthSquared() < 1e-6f) forwardFlat = Vector3::UnitZ;
+	forwardFlat.Normalize();
+
+	const Vector3 up(0.0f, 1.0f, 0.0f);
+	const Vector3 right = up.Cross(forwardFlat);
+	float currentSpeed = m_MoveSpeed * (m_IsDashing ? DASH_SPEED_MULT : 1.0f);
+
 	Vector3 movement = Vector3::Zero;
 	if (!m_IsChargingBreak)
 	{
@@ -334,7 +335,7 @@ void Player::Update(float deltaTime)
 		if (Input::GetKeyPress('D')) movement += right * currentSpeed;
 	}
 
-	// チートモード時の飛行操作
+	// NoClip 時の飛行操作
 	if (DebugManager::GetInstance().IsNoClipMode())
 	{
 		if (!m_IsChargingBreak)
@@ -342,121 +343,83 @@ void Player::Update(float deltaTime)
 			if (Input::GetKeyPress('Q')) movement.y += m_MoveSpeed;
 			if (Input::GetKeyPress('E')) movement.y -= m_MoveSpeed;
 		}
-	}
-
-	// チートモード時の当たり判定スキップ
-	if (DebugManager::GetInstance().IsNoClipMode())
-	{
-		// 飛行モード時は当たり判定なしで移動
 		m_Position += movement;
 		collider.center = m_Position;
+		return;
 	}
-	else
+
+	// 軸別当たり判定付き移動
+	if (m_CachedBlocks.empty())
+		m_CachedBlocks = SceneManager::GetInstance().FindAllObjects<Block>();
+
+	const auto& weakBlocks = m_CachedBlocks;
+
+	// 壁境界上での偽陽性（接触=衝突扱い）を防ぐため XZ にスキン幅を引く
+	auto collidesAt = [&](const Vector3& testPos) -> bool
 	{
-		// リリースモードでは当たり判定付き移動
-		// 初回フレームのみ全オブジェクトをスキャンしてキャッシュ
-		if (m_CachedBlocks.empty())
+		static constexpr float SKIN = 0.02f;
+		SimpleBoxCollider testCol = collider;
+		testCol.size.x = collider.size.x - SKIN * 2.0f;
+		testCol.size.z = collider.size.z - SKIN * 2.0f;
+		testCol.center = testPos;
+		for (auto& wb : weakBlocks)
 		{
-			m_CachedBlocks = SceneManager::GetInstance().FindAllObjects<Block>();
-		}
-		const auto& weakBlocks = m_CachedBlocks;
-
-		auto collidesAt = [&](const DirectX::SimpleMath::Vector3& testPos) -> bool {
-			// 壁境界上での偽陽性（接触=衝突扱い）を防ぐため XZ にスキン幅を引く
-			static constexpr float SKIN = 0.02f;
-			SimpleBoxCollider testCol = collider;
-			testCol.size.x = collider.size.x - SKIN * 2.0f;
-			testCol.size.z = collider.size.z - SKIN * 2.0f;
-			testCol.center = testPos;
-
-			for (auto& wb : weakBlocks)
+			if (auto b = wb.lock())
 			{
-				if (auto b = wb.lock())
-				{
-					if (b->IsPendingDestroy())
-					{
-						continue;
-					}
-
-					if (testCol.CheckCollision(b->GetCollider()))
-					{
-						return true;
-					}
-				}
+				if (!b->IsPendingDestroy() && testCol.CheckCollision(b->GetCollider()))
+					return true;
 			}
-			return false;
-			};
-
-		DirectX::SimpleMath::Vector3 desired = m_Position;
-
-		if (movement.x != 0.0f) {
-			auto test = desired; test.x += movement.x;
-			if (!collidesAt(test)) desired.x = test.x;
 		}
-		if (movement.z != 0.0f) {
-			auto test = desired; test.z += movement.z;
-			if (!collidesAt(test)) desired.z = test.z;
-		}
+		return false;
+	};
 
-		m_Position = desired;
-		collider.center = m_Position;
-	}
+	Vector3 desired = m_Position;
+	if (movement.x != 0.0f) { auto t = desired; t.x += movement.x; if (!collidesAt(t)) desired.x = t.x; }
+	if (movement.z != 0.0f) { auto t = desired; t.z += movement.z; if (!collidesAt(t)) desired.z = t.z; }
+	m_Position = desired;
+	collider.center = m_Position;
+}
 
-	if (IsGoal) return;
+//=======================================
+// スタミナ自然回復処理
+//=======================================
+void Player::UpdateStaminaRegen(float deltaTime)
+{
+	if (m_IsDashing || m_Stamina >= m_MaxStamina || !m_Map) return;
 
-	// スタミナ自然回復
-	if (!m_IsDashing && m_Stamina < m_MaxStamina && m_Map)
-	{
-		// プレイヤーのワールド座標からグリッド座標を算出
-		const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
+	const float HALF_BLOCK = MAP::Config::BLOCK_SIZE / 2.0f;
+	const float MAP_CX = m_Map->GetSizeX() / 2.0f * MAP::Config::BLOCK_SIZE;
+	const float MAP_CY = m_Map->GetSizeY() / 2.0f * MAP::Config::BLOCK_SIZE;
 
-		// マップサイズはランタイムで難易度によって変わるため、MakeMap から取得する
-		const float MAP_CX = m_Map->GetSizeX() / 2.0f * MAP::Config::BLOCK_SIZE;
-		const float MAP_CY = m_Map->GetSizeY() / 2.0f * MAP::Config::BLOCK_SIZE;
+	int gx = static_cast<int>(std::round((HALF_BLOCK + MAP_CX - m_Position.x) / MAP::Config::BLOCK_SIZE));
+	int gy = static_cast<int>(std::round((HALF_BLOCK - MAP_CY + (-m_Position.z)) / MAP::Config::BLOCK_SIZE));
 
-		int gx = static_cast<int>(std::round((HALF_BLOCK + MAP_CX - m_Position.x) / MAP::Config::BLOCK_SIZE));
-		int gy = static_cast<int>(std::round((HALF_BLOCK - MAP_CY + (-m_Position.z)) / MAP::Config::BLOCK_SIZE));
+	int sx, sy, goalX, goalY;
+	m_Map->GetStartGoal(sx, sy, goalX, goalY);
+	int distGoal = std::abs(goalX - gx) + std::abs(goalY - gy);
 
-		// ゴールからの距離を計算
-		int sx, sy, goalX, goalY;
-		m_Map->GetStartGoal(sx, sy, goalX, goalY);
-		int distGoal = std::abs(goalX - gx) + std::abs(goalY - gy);
+	float regenRate;
+	if      (distGoal <= m_Map->GetGoalNearRadius()) regenRate = STAMINA_REGEN_NEAR;
+	else if (distGoal <= m_Map->GetGoalMidRadius())  regenRate = STAMINA_REGEN_MID;
+	else                                              regenRate = STAMINA_REGEN_FAR;
 
-		float regenRate;
-		if (distGoal <= m_Map->GetGoalNearRadius())   // 赤ゾーン（ゴール近接）
-			regenRate = STAMINA_REGEN_NEAR;
-		else if (distGoal <= m_Map->GetGoalMidRadius()) // 青ゾーン（中距離）
-			regenRate = STAMINA_REGEN_MID;    // 青ゾーン中間
-		else
-			regenRate = STAMINA_REGEN_FAR;    // 緑ゾーン遠距離
+	if (!m_IsExhausted)
+		m_Stamina = std::min(m_Stamina + regenRate * deltaTime, m_MaxStamina);
+}
 
-		// 枯渇ペナルティ中は回復しない
-		if (!m_IsExhausted)
-		{
-			m_Stamina = std::min(m_Stamina + regenRate * deltaTime, m_MaxStamina);
-		}
-	}
-
-	// ゴール判定（デバッグモード・リリースモード・通用）
+//=======================================
+// ゴール到達判定処理
+//=======================================
+void Player::UpdateGoalCheck()
+{
 	auto weakPole = SceneManager::GetInstance().FindObject<Pole>();
-
 	if (auto p = weakPole.lock())
 	{
-		if (collider.CheckCollision(p->GetCollider()))
+		if (collider.CheckCollision(p->GetCollider()) && m_HasKey)
 		{
-			
-			if (m_HasKey)
-			{
-				IsGoal = true;
-				m_CanMove = false;// 移動不可にする
-				SceneManager::GetInstance().ChangeScene<GameClearScene>(std::make_unique<FadeTransition>(3.0f));
-			}
-			else
-			{
-				//カギを持っていない場合の処理
-				//std::cout << "You need the Key to goal!" << std::endl;
-
-			}
+			m_IsGoal = true;
+			m_CanMove = false;
+			SceneManager::GetInstance().ChangeScene<GameClearScene>(std::make_unique<FadeTransition>(3.0f));
 		}
 	}
 }
@@ -469,7 +432,6 @@ void Player::StartInvisible(float duration)
 {
 	m_IsInvisible = true;
 	m_InvisibleTimer = duration;
-	//std::cout << "!!! POWER UP START (Time: " << duration << ") !!!\n";
 }
 
 
@@ -580,7 +542,6 @@ void Player::TryBreakWall()
 
 	if (!m_Map)
 	{
-		//std::cout << "Error: Map reference is null\n";
 		return;
 	}
 
@@ -604,7 +565,6 @@ void Player::TryBreakWall()
 
 	if (gridX < 0 || gridY < 0)
 	{
-		//std::cout << "Error: Invalid grid coordinates\n";
 		return;
 	}
 
@@ -624,8 +584,45 @@ void Player::TryBreakWall()
 			}),
 		m_CachedBlocks.end()
 	);
-
-	//std::cout << "Wall broken at grid (" << gridX << ", " << gridY << ")\n";
 }
+
+
+//=======================================
+// セッター
+//=======================================
+void Player::SetMap(MakeMap* map) { m_Map = map; }
+void Player::SetPosition(const DirectX::SimpleMath::Vector3& pos) { m_Position = pos; }
+void Player::SetRotation(const Vector3& rotation) { m_Rotation = rotation; }
+void Player::SetYawRotation(float yaw) { m_Rotation.y = yaw; }
+void Player::SetPitch(float pitch) { m_Pitch = pitch; }
+void Player::SetMouseSensitivity(float sensitivity) { m_MouseSensitivity = sensitivity; }
+void Player::SetMouseCaptured(bool captured) { m_MouseCaptured = captured; }
+void Player::SetCanMove(bool canMove) { m_CanMove = canMove; }
+void Player::SetHasKey(bool hasKey) { m_HasKey = hasKey; }
+void Player::SetMaxInvisibleStock(int stock) { m_MaxInvisibleStock = stock; m_InvisibleStock = stock; }
+
+//=======================================
+// ゲッター
+//=======================================
+Vector3 Player::GetPosition() const { return m_Position; }
+Vector3 Player::GetRotation() const { return m_Rotation; }
+float Player::GetYawRotation() const { return m_Rotation.y; }
+float Player::GetPitch() const { return m_Pitch; }
+Vector3 Player::GetForward() const { return m_Forward; }
+float Player::GetMouseSensitivity() const { return m_MouseSensitivity; }
+bool Player::IsMouseCaptured() const { return m_MouseCaptured; }
+bool Player::GetGoalFlag() const { return m_IsGoal; }
+bool Player::CanMove() const { return m_CanMove; }
+bool Player::HasKey() const { return m_HasKey; }
+int Player::GetInvisibleStock() const { return m_InvisibleStock; }
+int Player::GetMaxInvisibleStock() const { return m_MaxInvisibleStock; }
+bool Player::IsInvisible() const { return m_IsInvisible; }
+bool Player::IsChargingBreak() const { return m_IsChargingBreak; }
+float Player::GetBreakChargeProgress() const { return m_BreakChargeTimer / WALL_BREAK_CHARGE_TIME; }
+
+// スタミナ関連ゲッター
+float Player::GetStamina() const { return m_Stamina; }
+float Player::GetMaxStamina() const { return m_MaxStamina; }
+bool  Player::IsDashing() const { return m_IsDashing; }
 
 

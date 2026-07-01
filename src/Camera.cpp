@@ -48,6 +48,7 @@ void Camera::Update(float deltaTime)
         while (ShowCursor(FALSE) >= 0);
         SetCursor(NULL);
 		CenterCursorToWindow();// ウィンドウ中央にカーソルを移動
+		Input::ResetMouseTracking();// GetMouseMove側の基準点も中央に同期させる
     }
 
 
@@ -193,20 +194,6 @@ void Camera::Update(float deltaTime)
         //ターゲットの更新
         // 自分の位置から、向いている方向に少し先をターゲットにする
         m_Target = m_Position + forward * 10.0f;
-
-
-        ////デバッグログ出力(1秒ごと)
-        //m_DebugLogTimer += deltaTime;
-        //if (m_DebugLogTimer >= 1.0f)
-        //{
-        //    m_DebugLogTimer = 0.0f; // タイマーリセット
-
-        //    // コンソール出力
-        //    printf("[DebugCamera] Pos(%.1f, %.1f, %.1f) Target(%.1f, %.1f, %.1f) Yaw:%.2f Pitch:%.2f\n",
-        //        m_Position.x, m_Position.y, m_Position.z,
-        //        m_Target.x, m_Target.y, m_Target.z,
-        //        m_Yaw, m_Pitch);
-        //}
     }
 
 	// =================================================================
@@ -335,6 +322,7 @@ void Camera::RecaptureMouseImmediate()
     while (ShowCursor(FALSE) >= 0);
     SetCursor(NULL);
     CenterCursorToWindow();
+    Input::ResetMouseTracking(); // GetMouseMove側の基準点も中央に同期させる
 }
 
 

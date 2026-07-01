@@ -175,3 +175,11 @@ void Input::GetMouseMove(int* deltaX, int* deltaY)
 		g_LastMouseY = centerY;
 	}
 }
+
+// マウス移動の基準点をリセットする
+// カーソルをCenterCursorToWindow等で強制的に移動させた直後に呼ぶことで、
+// 次回のGetMouseMove()が古い基準点との差分で誤った大きな移動量を返すのを防ぐ
+void Input::ResetMouseTracking()
+{
+	g_FirstMouse = true;
+}

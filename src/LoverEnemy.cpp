@@ -1,12 +1,12 @@
-﻿#include "pch.h"
-#include "loversEnemy.h"
-#include "EnemyState_loversChase.h" 
+#include "pch.h"
+#include "LoverEnemy.h"
+#include "EnemyState_loversChase.h"
 #include "MakeMap.h"
 #include "Pathfinder.h"
 
 
 
-void loversEnemy::Init()
+void LoverEnemy::Init()
 {
     Enemy::Init();
 
@@ -20,7 +20,7 @@ void loversEnemy::Init()
     m_IsFlankingMode = false;
 }
 
-void loversEnemy::Update(float deltaTime)
+void LoverEnemy::Update(float deltaTime)
 {
     // 自分がプレイヤーを見つけた場合の処理
     if (CanSeePlayer())
@@ -50,7 +50,7 @@ void loversEnemy::Update(float deltaTime)
 
 
 // 相方から呼ばれる関数
-void loversEnemy::NotifyPlayerFound(const DirectX::SimpleMath::Vector3& playerPos)
+void LoverEnemy::NotifyPlayerFound(const DirectX::SimpleMath::Vector3& playerPos)
 {
     // 相方の報告を聞いて、裏取りモードになる
     if (CanSeePlayer()) return; // 自分も見えてるなら、自分が追う
@@ -71,7 +71,7 @@ void loversEnemy::NotifyPlayerFound(const DirectX::SimpleMath::Vector3& playerPo
 
 
 // パス計算
-bool loversEnemy::ComputePathTo(const DirectX::SimpleMath::Vector3& target)
+bool LoverEnemy::ComputePathTo(const DirectX::SimpleMath::Vector3& target)
 {
 
     if (!m_Map) return false; // マップが設定されていない場合は失敗

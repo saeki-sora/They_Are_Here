@@ -34,7 +34,7 @@ void TitleEnemy::Init()
 	{
 		auto mat = std::make_unique<Material>();
 		mat->Create(materials[i]);
-		m_Materiales.push_back(std::move(mat));
+		m_Materials.push_back(std::move(mat));
 	}
 
 	m_Shader.Create("shader/litTextureVS.hlsl", "shader/litTexturePS.hlsl");
@@ -152,8 +152,8 @@ void TitleEnemy::Draw()
 	for (size_t i = 0; i < m_subsets.size(); ++i)
 	{
 		int matIdx = m_subsets[i].MaterialIdx;
-		m_Materiales[matIdx]->SetGPU();
-		if (m_Materiales[matIdx]->isTextureEnable()) m_Textures[matIdx]->SetGPU();
+		m_Materials[matIdx]->SetGPU();
+		if (m_Materials[matIdx]->isTextureEnable()) m_Textures[matIdx]->SetGPU();
 		m_MeshRenderer.DrawSubset(m_subsets[i].IndexNum, m_subsets[i].IndexBase, m_subsets[i].VertexBase);
 	}
 }

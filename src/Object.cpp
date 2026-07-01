@@ -39,9 +39,9 @@ void Object::Draw() {
 	for (int i = 0; i < m_subsets.size(); ++i)
 	{
 		// マテリアルをセット(サブセット情報の中にあるマテリアルインデックスを使用)
-		m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
+		m_Materials[m_subsets[i].MaterialIdx]->SetGPU();
 
-		if (m_Materiales[m_subsets[i].MaterialIdx]->isTextureEnable())
+		if (m_Materials[m_subsets[i].MaterialIdx]->isTextureEnable())
 		{
 			m_Textures[m_subsets[i].MaterialIdx]->SetGPU();
 		}
@@ -95,4 +95,24 @@ Vector3 Object::GetRotation()const
 float Object::GetTargetYaw() const
 {
 	return m_TargetYaw;
+}
+
+void Object::SetTargetYaw(float yaw)
+{
+	m_TargetYaw = yaw;
+}
+
+bool Object::Is3D() const
+{
+	return true;
+}
+
+void Object::Destroy()
+{
+	m_IsPendingDestroy = true;
+}
+
+bool Object::IsPendingDestroy() const
+{
+	return m_IsPendingDestroy;
 }

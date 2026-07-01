@@ -39,7 +39,7 @@ PS_INPUT vs_main(VS_INPUT input)
     pos = mul(pos, view);
     pos = mul(pos, Projection);
 
-    pos.z = pos.w; // ç≈âú
+    pos.z = pos.w; // ÊúÄÂ••
     output.Pos = pos;
     output.Tex = input.Tex;
 

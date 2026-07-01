@@ -30,17 +30,23 @@ public:
 	void DrawShadow() override;
 	void Uninit() override;
 
-	void SetMap(MakeMap* map) { m_Map = map; }
+	void SetMap(MakeMap* map);
 
 	void ChangeState(std::unique_ptr<EnemyState> newState);
 
-	float GetCatchRange() const { return m_CatchRange; }//敵に捕まる範囲を取得
+	float GetCatchRange() const;//敵に捕まる範囲を取得
 
 	//目的地までのパスを計算する
 	virtual bool ComputePathTo(const DirectX::SimpleMath::Vector3& target);
 
 	//パスに沿って移動する
 	void FollowPath(float deltaTime);
+
+private:
+	// FollowPath 内の壁スライド移動処理（壁に当たった際に軸別に滑る）
+	void AttemptMovementSlide(const DirectX::SimpleMath::Vector3& delta);
+
+public:
 
 	//プレイヤーが見えるかどうかを判定する
 	bool CanSeePlayer();
@@ -51,21 +57,17 @@ public:
 	//探索済みのターゲットをマークする
 	void MarkTargetVisited();
 
-	const DirectX::SimpleMath::Vector3& GetLastPlayerPos() const { return m_LastPlayerPos; }//最後にプレイヤーがいた位置を取得
-	void SetLastPlayerPos(const DirectX::SimpleMath::Vector3& pos) { m_LastPlayerPos = pos; }
+	const DirectX::SimpleMath::Vector3& GetLastPlayerPos() const;//最後にプレイヤーがいた位置を取得
+	void SetLastPlayerPos(const DirectX::SimpleMath::Vector3& pos);
 
-	MakeMap* GetMap() const { return m_Map; }
-	bool HasPath() const { return !m_Waypoints.empty(); }//移動ルートがあるかどうか
+	MakeMap* GetMap() const;
+	bool HasPath() const;//移動ルートがあるかどうか
 
 	//目的地に到達したかどうか
-	bool IsAtDestination() const { return m_Waypoints.empty(); }
+	bool IsAtDestination() const;
 
 	// パスをクリアしてその場で停止する
-	void ClearPath()
-	{
-		m_Waypoints.clear();
-		m_Velocity = DirectX::SimpleMath::Vector3::Zero;
-	}
+	void ClearPath();
 
 
 	static void ResetPathCalculationCount();// 今フレームのパス計算数をリセットする
@@ -81,19 +83,19 @@ public:
 	// ウィスカー判定
 	bool CheckWideLineOfSight(const DirectX::SimpleMath::Vector3& start, const DirectX::SimpleMath::Vector3& end, float radius) const;
 
-	bool IsChasing() const { return m_State && m_State->IsChaseState(); }//追跡状態かどうか
+	bool IsChasing() const;//追跡状態かどうか
 
 	//ゲッター
-	float GetSearchSpeed() const { return m_SearchSpeed; }
-	float GetChaseSpeed() const { return m_ChaseSpeed; }
-	float GetChasePathUpdateInterval() const { return m_ChasePathUpdateInterval; }
-	float GetLostStateDuration() const { return m_LostStateDuration; }
-	DirectX::SimpleMath::Vector3 GetRotation() const { return m_Rotation; }
-	DirectX::SimpleMath::Vector3 GetVelocity() const { return m_Velocity; }
+	float GetSearchSpeed() const;
+	float GetChaseSpeed() const;
+	float GetChasePathUpdateInterval() const;
+	float GetLostStateDuration() const;
+	DirectX::SimpleMath::Vector3 GetRotation() const;
+	DirectX::SimpleMath::Vector3 GetVelocity() const;
 
 	//セッター
-	void SetRotation(const DirectX::SimpleMath::Vector3& rot) { m_Rotation = rot; }
-	void SetCurrentMaxSpeed(float speed) { m_CurrentMaxSpeed = speed; }
+	void SetRotation(const DirectX::SimpleMath::Vector3& rot);
+	void SetCurrentMaxSpeed(float speed);
 
 private:
 

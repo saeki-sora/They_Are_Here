@@ -16,6 +16,7 @@
 #include "Application.h"
 #include "TitleScene.h"
 #include "SoundManager.h"
+#include "ResultData.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -316,6 +317,13 @@ void Stage1Scene::OnUpdate(float deltaTime)
 	{
 		UpdateIntro(deltaTime);
 	}
+
+	// イントロ終了後、ポーズ中以外でプレイ時間を計測
+	if (m_IntroPhase == IntroPhase::Finished && !IsGamePaused())
+	{
+		m_GameTimer += deltaTime;
+	}
+	ResultData::s_ElapsedTime = m_GameTimer;
 
 	Enemy::ResetPathCalculationCount();// 今フレームのパス計算数をリセットする
 

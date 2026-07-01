@@ -15,6 +15,11 @@ public:
 	void Uninit();
 	void Update(float deltaTime);
 
+	// 現在のグラフィック設定をJSONファイルへ保存する
+	void SaveSettings(const std::string& filePath);
+	// JSONファイルからグラフィック設定を読み込む（無ければ既定値を維持する）
+	void LoadSettings(const std::string& filePath);
+
 	// 3D描画完了後に呼び、ポストプロセスチェーンを実行してバックバッファへ出力する
 	void Execute();
 

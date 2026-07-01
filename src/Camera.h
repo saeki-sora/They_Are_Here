@@ -48,8 +48,6 @@ protected:
 
 	DirectX::BoundingFrustum m_Frustum;//カリング用フラスタム
 
-	float m_DebugLogTimer = 0.0f;// デバッグログ出力用タイマー
-
 	float m_FreeMoveSpeed = 20.0f; // Freeモード時の移動速度
 
 private:

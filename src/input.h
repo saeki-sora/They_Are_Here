@@ -98,5 +98,8 @@ public:
 
 	//マウスの移動量を取得
 	static void GetMouseMove(int* deltaX, int* deltaY);
+
+	//マウス移動の基準点をリセットする（カーソルを外部で強制移動させた直後に呼ぶ）
+	static void ResetMouseTracking();
 };
 

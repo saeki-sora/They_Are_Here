@@ -45,7 +45,7 @@ private:
 	bool m_HasKey = false;//カギを持っているかどうか
 	float m_NoKeyMessageTimer = 0.0f;//カギを持っていないときに出す画像の表示時間
 
-	bool IsGoal = false; //ゴールフラグ
+	bool m_IsGoal = false; //ゴールフラグ
 
 	MakeMap* m_Map = nullptr; // マップグリッド操作用
 
@@ -70,6 +70,14 @@ private:
 
 	DashEffect* m_DashEffect = nullptr; // ダッシュエフェクト（所有権はEffectManager）
 
+	// Update を責務ごとに分割した内部ヘルパー
+	void UpdateWallBreak(float deltaTime);
+	void UpdateLook();
+	void UpdateDashAndStamina(float deltaTime);
+	void UpdateMovement(float deltaTime);
+	void UpdateStaminaRegen(float deltaTime);
+	void UpdateGoalCheck();
+
 public:
 
 	Player(
@@ -87,43 +95,43 @@ public:
 
 	
 	void StartInvisible(float duration);//透明化を開始する
-	bool IsInvisible() const { return m_IsInvisible; }//透明化中か否か
+	bool IsInvisible() const;//透明化中か否か
 	void AddInvisibleStock(int amount);//ストックを増やす関数
 
 	void TryBreakWall(); // 壁破壊を試みる
 	std::weak_ptr<Block> GetBlockInFront() const; // 前方のブロックを取得
-	bool IsChargingBreak() const { return m_IsChargingBreak; } // チャージ中か確認
-	float GetBreakChargeProgress() const { return m_BreakChargeTimer / WALL_BREAK_CHARGE_TIME; } // チャージ進行度を取得(0.0~1.0)
+	bool IsChargingBreak() const; // チャージ中か確認
+	float GetBreakChargeProgress() const; // チャージ進行度を取得(0.0~1.0)
 
 	//セッター
-	void SetMap(MakeMap* map) { m_Map = map; }
-	void SetPosition(const DirectX::SimpleMath::Vector3& pos) { m_Position = pos; }
-	void SetRotation(const Vector3& rotation) { m_Rotation = rotation; }
-	void SetYawRotation(float yaw) { m_Rotation.y = yaw; }
-	void SetPitch(float pitch) { m_Pitch = pitch; }
-	void SetMouseSensitivity(float sensitivity) { m_MouseSensitivity = sensitivity; }// マウス感度の設定
-	void SetMouseCaptured(bool captured) { m_MouseCaptured = captured; }// マウスキャプチャ状態の設定
-	void SetCanMove(bool canMove) { m_CanMove = canMove; }// 移動可能フラグの設定
-	void SetHasKey(bool hasKey) { m_HasKey = hasKey; }// カギ所持フラグの設定
-	void SetMaxInvisibleStock(int stock) { m_MaxInvisibleStock = stock; m_InvisibleStock = stock; }// 最大ストック数を設定し、現在ストックも合わせる
+	void SetMap(MakeMap* map);
+	void SetPosition(const DirectX::SimpleMath::Vector3& pos);
+	void SetRotation(const Vector3& rotation);
+	void SetYawRotation(float yaw);
+	void SetPitch(float pitch);
+	void SetMouseSensitivity(float sensitivity);// マウス感度の設定
+	void SetMouseCaptured(bool captured);// マウスキャプチャ状態の設定
+	void SetCanMove(bool canMove);// 移動可能フラグの設定
+	void SetHasKey(bool hasKey);// カギ所持フラグの設定
+	void SetMaxInvisibleStock(int stock);// 最大ストック数を設定し、現在ストックも合わせる
 
 
 	//ゲッター
-	Vector3 GetPosition() const override { return m_Position; } // ポジションの取得
-	Vector3 GetRotation() const { return m_Rotation; }// 回転の取得
-	float GetYawRotation() const { return m_Rotation.y; } // 水平回転角度（ヨー）の取得
-	float GetPitch() const { return m_Pitch; }// 垂直回転角度（ピッチ）の取得
-	Vector3 GetForward() const { return m_Forward; } // 前方ベクトルの取得
-	float GetMouseSensitivity() const { return m_MouseSensitivity; }
-	bool IsMouseCaptured() const { return m_MouseCaptured; }
-	bool GetGoalFlag() const { return IsGoal; }// ゴールフラグの取得
-	bool CanMove() const { return m_CanMove; }// 移動可能フラグの取得
-	bool HasKey() const { return m_HasKey; }// カギ所持フラグの取得
-	int GetInvisibleStock() const { return m_InvisibleStock; }//現在の透明化アイテムの数の取得
-	int GetMaxInvisibleStock() const { return m_MaxInvisibleStock; }//透明化アイテムの最大数の取得
+	Vector3 GetPosition() const override; // ポジションの取得
+	Vector3 GetRotation() const;// 回転の取得
+	float GetYawRotation() const; // 水平回転角度（ヨー）の取得
+	float GetPitch() const;// 垂直回転角度（ピッチ）の取得
+	Vector3 GetForward() const; // 前方ベクトルの取得
+	float GetMouseSensitivity() const;
+	bool IsMouseCaptured() const;
+	bool GetGoalFlag() const;// ゴールフラグの取得
+	bool CanMove() const;// 移動可能フラグの取得
+	bool HasKey() const;// カギ所持フラグの取得
+	int GetInvisibleStock() const;//現在の透明化アイテムの数の取得
+	int GetMaxInvisibleStock() const;//透明化アイテムの最大数の取得
 
 	// スタミナ関連ゲッター
-	float GetStamina() const { return m_Stamina; }
-	float GetMaxStamina() const { return m_MaxStamina; }
-	bool  IsDashing() const { return m_IsDashing; }
+	float GetStamina() const;
+	float GetMaxStamina() const;
+	bool  IsDashing() const;
 };

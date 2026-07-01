@@ -27,7 +27,9 @@ class Texture
 
 public:
 
-	bool Load(const std::string& filename);
+	// generateNormalMap: false にすると "_n" 探索とSobelフィルタ生成をスキップする
+	// （2D/UIのunlitシェーダーはノーマルマップを使わないため不要）
+	bool Load(const std::string& filename, bool generateNormalMap = true);
 	bool LoadFromMemory(const unsigned char* data,int len);
 
 	void SetGPU();

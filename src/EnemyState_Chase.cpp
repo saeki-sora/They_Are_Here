@@ -10,8 +10,6 @@ using namespace DirectX::SimpleMath;
 
 void EnemyChaseState::Enter(Enemy* enemy)
 {
-    //std::cout << "【追跡状態】開始\n";
-
     enemy->SetCurrentMaxSpeed(enemy->GetChaseSpeed()); // 追跡速度に設定
 
 	// 経路更新タイマーをランダムに初期化して、複数の敵が同時に経路計算しないようにする
@@ -59,7 +57,6 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime)
     {
         // プレイヤーを見失っている：見失いタイマーを加算
         m_TimePlayerUnseen += deltaTime;
-        //std::cout << "【追跡】プレイヤー視界外: " << m_TimePlayerUnseen << "秒経過\n";
 
 		// 見失い時間が一定を超えたら見失い状態へ遷移
         if (m_TimePlayerUnseen >= enemy->GetLostStateDuration() || enemy->IsAtDestination())
@@ -71,12 +68,9 @@ void EnemyChaseState::Update(Enemy* enemy, float deltaTime)
         // 見失い中も経路更新は継続（最後に見た位置への追跡を継続）
         if (m_PathUpdateTimer >= m_PathUpdateInterval)
         {
-            //std::cout << "【追跡】見失い中も経路更新：最後の位置へ\n";
-
             Vector3 lastPos = enemy->GetLastPlayerPos();
             if (enemy->ComputePathTo(lastPos))
             {
-                // std::cout << "【追跡】見失い中経路更新成功\n";
                 m_PathUpdateTimer = 0.0f;
             }
         }

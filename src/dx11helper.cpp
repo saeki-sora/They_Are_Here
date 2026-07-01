@@ -1,6 +1,70 @@
 ﻿#include "pch.h"
 #include	"dx11helper.h"
 
+//=======================================
+// デバッグ描画用 D3D11 ステート保存
+//=======================================
+void SaveD3D11DebugState(ID3D11DeviceContext* ctx, D3D11DebugState& s)
+{
+	ctx->RSGetState(&s.RasterState);
+	ctx->OMGetDepthStencilState(&s.DepthState, &s.StencilRef);
+	ctx->OMGetBlendState(&s.BlendState, s.BlendFactor, &s.SampleMask);
+	ctx->IAGetInputLayout(&s.InputLayout);
+	ctx->IAGetPrimitiveTopology(&s.Topology);
+	ctx->VSGetShader(&s.VS, s.VSInstances, &s.NumVSInst);
+	ctx->PSGetShader(&s.PS, s.PSInstances, &s.NumPSInst);
+	ctx->IAGetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT,
+		s.VB, s.VBStride, s.VBOffset);
+	ctx->IAGetIndexBuffer(&s.IB, &s.IBFmt, &s.IBOfs);
+	ctx->VSGetConstantBuffers(0, 4, s.VSCB);
+	ctx->PSGetConstantBuffers(0, 4, s.PSCB);
+	ctx->PSGetShaderResources(0, 4, s.PSSRV);
+	ctx->PSGetSamplers(0, 4, s.PSSampler);
+}
+
+//=======================================
+// デバッグ描画用 D3D11 ステート復元（取得したインターフェースを Release する）
+//=======================================
+void RestoreD3D11DebugState(ID3D11DeviceContext* ctx, D3D11DebugState& s)
+{
+	// VB / IB 復元
+	ctx->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT,
+		s.VB, s.VBStride, s.VBOffset);
+	ctx->IASetIndexBuffer(s.IB, s.IBFmt, s.IBOfs);
+	for (auto* b : s.VB)  if (b) b->Release();
+	if (s.IB) s.IB->Release();
+
+	// CB 復元
+	ctx->VSSetConstantBuffers(0, 4, s.VSCB);
+	ctx->PSSetConstantBuffers(0, 4, s.PSCB);
+	for (auto* b : s.VSCB)  if (b) b->Release();
+	for (auto* b : s.PSCB)  if (b) b->Release();
+
+	// SRV / Sampler 復元
+	ctx->PSSetShaderResources(0, 4, s.PSSRV);
+	ctx->PSSetSamplers(0, 4, s.PSSampler);
+	for (auto* v : s.PSSRV)     if (v) v->Release();
+	for (auto* ss : s.PSSampler) if (ss) ss->Release();
+
+	// レンダーステート復元
+	ctx->RSSetState(s.RasterState);
+	ctx->OMSetDepthStencilState(s.DepthState, s.StencilRef);
+	ctx->OMSetBlendState(s.BlendState, s.BlendFactor, s.SampleMask);
+	ctx->IASetInputLayout(s.InputLayout);
+	ctx->IASetPrimitiveTopology(s.Topology);
+	ctx->VSSetShader(s.VS, s.VSInstances, s.NumVSInst);
+	ctx->PSSetShader(s.PS, s.PSInstances, s.NumPSInst);
+
+	if (s.RasterState) s.RasterState->Release();
+	if (s.DepthState)  s.DepthState->Release();
+	if (s.BlendState)  s.BlendState->Release();
+	if (s.InputLayout) s.InputLayout->Release();
+	if (s.VS) s.VS->Release();
+	for (UINT i = 0; i < s.NumVSInst; ++i) if (s.VSInstances[i]) s.VSInstances[i]->Release();
+	if (s.PS) s.PS->Release();
+	for (UINT i = 0; i < s.NumPSInst; ++i) if (s.PSInstances[i]) s.PSInstances[i]->Release();
+}
+
 #pragma comment(lib,"d3dcompiler.lib")
 
 //--------------------------------------------------------------------------------------

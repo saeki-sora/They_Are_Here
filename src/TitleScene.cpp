@@ -397,6 +397,7 @@ void TitleScene::OnDeactivate()
 void TitleScene::OnUnload()
 {
 	Renderer::ClearLights();//点光源全削除
+	SceneBase::OnUnload();
 }
 
 

@@ -142,7 +142,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)imgui-master\imgui-master\backends;$(SolutionDir)imgui-master\imgui-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -237,10 +237,11 @@
     <ClCompile Include="GameClearScene.cpp" />
     <ClCompile Include="GameOverScene.cpp" />
     <ClCompile Include="GoalKey.cpp" />
+    <ClCompile Include="ResultData.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="InvisibleEffect.cpp" />
     <ClCompile Include="InvisibleItem.cpp" />
-    <ClCompile Include="loversEnemy.cpp" />
+    <ClCompile Include="LoverEnemy.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="DifficultyManager.cpp" />
     <ClCompile Include="DifficultySelectScene.cpp" />
@@ -281,7 +282,6 @@
     <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="TitleEnemy.cpp" />
     <ClCompile Include="TitleScene.cpp" />
-    <ClCompile Include="UI_Result.cpp" />
     <ClCompile Include="utility.cpp" />
     <ClCompile Include="VisualObject.cpp" />
   </ItemGroup>
@@ -327,7 +327,7 @@
     <ClInclude Include="input.h" />
     <ClInclude Include="InvisibleEffect.h" />
     <ClInclude Include="InvisibleItem.h" />
-    <ClInclude Include="loversEnemy.h" />
+    <ClInclude Include="LoverEnemy.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="DifficultyConfig.h" />
     <ClInclude Include="DifficultyManager.h" />
@@ -367,7 +367,6 @@
     <ClInclude Include="TextureManager.h" />
     <ClInclude Include="TitleEnemy.h" />
     <ClInclude Include="TitleScene.h" />
-    <ClInclude Include="UI_Result.h" />
     <ClInclude Include="utility.h" />
     <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VisualObject.h" />

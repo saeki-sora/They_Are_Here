@@ -4,8 +4,6 @@
 class DebugManager
 {
 private:
-    static DebugManager* s_Instance;
-
     bool m_DebugModeEnabled;          // デバッグモード全体のON/OFF
     bool m_ShowColliders;             // コライダーの表示
     bool m_NoClipMode;                // 飛行モード(壁すり抜け)
@@ -26,8 +24,6 @@ public:
     ~DebugManager();
 
     static DebugManager& GetInstance();
-    static void Create();
-    static void Destroy();
 
     void Update(float deltaTime);
 

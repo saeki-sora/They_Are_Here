@@ -45,14 +45,14 @@ private:
     // 方向インジケーター用参照
     std::weak_ptr<GoalKey> m_GoalKey;
     std::weak_ptr<Pole>    m_GoalPole;
-	bool m_IsLargeMap = false;// 大マップ表示フラグ
-	bool m_PrevMKey = false;// 前フレームのMキー状態
+	bool m_IsLargeMap = false; // 大マップ表示フラグ
+	bool m_PrevMKey = false; // 前フレームのMキー状態
 
     // プレイヤーのマップ上UV（0～1）
     float m_PlayerTexX = 0.5f;
     float m_PlayerTexY = 0.5f;
 
-    int m_FogBrushSize = 80;//一度通ったことのある場所はどの程度その周りが見えるようになるか
+    int m_FogBrushSize = 80; // 一度通ったことのある場所はどの程度その周りが見えるようになるか
 
     // DirectXリソース
     Microsoft::WRL::ComPtr<ID3D11Texture2D>          m_FogTex, m_MapTex;

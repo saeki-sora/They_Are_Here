@@ -324,7 +324,6 @@ void Renderer::Init()
     hr = m_Device->CreateSamplerState(&samplerDesc, &m_SamplerState);
     if (FAILED(hr)) return;
     m_DeviceContext->PSSetSamplers(0, 1, &m_SamplerState);
-    //m_SamplerState->Release();
 
     // ------------------------------------
     // 各種定数バッファ
@@ -1082,16 +1081,6 @@ int Renderer::AddSpotLight(const DirectX::SimpleMath::Vector3& pos, const Direct
 
             m_LightData.Lights[i].Color = color;
             m_LightData.Lights[i].Color.w = 2.0f; //スポットライト
-
-            static bool once = false;
-            if (!once)
-            {
-                //std::cout << "[Renderer] SpotLight Added at Index: " << i << "\n";
-                //std::cout << "  > Dir: " << d.x << ", " << d.y << ", " << d.z << "\n";
-                //std::cout << "  > Angle(Deg): " << angleDeg << " -> Cos: " << cosAngle << "\n";
-
-                once = true;
-            }
 
             PushLightBuffer();
             return i;

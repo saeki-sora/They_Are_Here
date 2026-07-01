@@ -10,7 +10,7 @@
 #include "InvisibleItem.h"
 #include "StalkerEnemy.h"
 #include "GoalKey.h"
-#include "loversEnemy.h"
+#include "LoverEnemy.h"
 #include "LampObject.h"
 
 
@@ -155,8 +155,8 @@ void MakeMap::SpawnObjects(SceneBase* scene)
         loverIndex2 = indices[assigned++];
     }
 
-    std::shared_ptr<loversEnemy> ptrLover1 = nullptr;
-    std::shared_ptr<loversEnemy> ptrLover2 = nullptr;
+    std::shared_ptr<LoverEnemy> ptrLover1 = nullptr;
+    std::shared_ptr<LoverEnemy> ptrLover2 = nullptr;
 
     for (int i = 0; i < static_cast<int>(totalCount); ++i)
     {
@@ -167,8 +167,8 @@ void MakeMap::SpawnObjects(SceneBase* scene)
 
         if (type == EnemyType::Lover)
         {
-            if (!ptrLover1) ptrLover1 = std::dynamic_pointer_cast<loversEnemy>(enemy);
-            else            ptrLover2 = std::dynamic_pointer_cast<loversEnemy>(enemy);
+            if (!ptrLover1) ptrLover1 = std::dynamic_pointer_cast<LoverEnemy>(enemy);
+            else            ptrLover2 = std::dynamic_pointer_cast<LoverEnemy>(enemy);
         }
 
         if (i == plan.keyEnemyIndex)
@@ -539,7 +539,6 @@ void MakeMap::SetObjects()
                 e_pos.z = -(HALF_BLOCK - MAP_CENTER_Y + MAP::Config::BLOCK_SIZE * c.y);
 
                 plan.enemy.push_back(ObjectSpec{ c.x, c.y, e_pos, Vector3(MAP::Config::EnemyFallbackSize, MAP::Config::EnemyFallbackSize, MAP::Config::EnemyFallbackSize) });
-                //std::cout << "[Enemy] Fallback: 1 体だけ配置\n";
             }
         }
 
@@ -678,7 +677,6 @@ void MakeMap::SetItems()
 
     if (walkableCells.empty())
     {
-        //std::cout << "アイテム配置場所がないです\n";
         return;
     }
 
@@ -975,7 +973,7 @@ std::shared_ptr<ColliderObject> MakeMap::CreateEnemy(
     }
     case EnemyType::Lover:
     {
-        auto weak = scene->AddObject<loversEnemy>(pos, size);
+        auto weak = scene->AddObject<LoverEnemy>(pos, size);
         if (auto shared = weak.lock()) createdEnemy = shared;
         break;
     }
@@ -992,7 +990,7 @@ std::shared_ptr<ColliderObject> MakeMap::CreateEnemy(
     {
         if      (auto e = std::dynamic_pointer_cast<Enemy>(createdEnemy))       e->SetMap(this);
         else if (auto s = std::dynamic_pointer_cast<StalkerEnemy>(createdEnemy)) s->SetMap(this);
-        else if (auto l = std::dynamic_pointer_cast<loversEnemy>(createdEnemy))  l->SetMap(this);
+        else if (auto l = std::dynamic_pointer_cast<LoverEnemy>(createdEnemy))  l->SetMap(this);
     }
 
     return createdEnemy;

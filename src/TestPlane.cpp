@@ -47,7 +47,7 @@ void TestPlane::Init()
 	m_Shader.Create("shader/unlitTextureVS.hlsl","shader/unlitTexturePS.hlsl");
 
 	// テクスチャロード
-	bool sts= m_Texture.Load("assets/texture/field.jpg");
+	bool sts= m_Texture.Load("assets/texture/field.jpg", false); // unlit描画のためノーマルマップ不要
 	assert(sts==true);
 	if (sts == false) {
 		MessageBox(nullptr, "テクスチャの読み込みに失敗しました", "エラー", MB_OK);

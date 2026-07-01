@@ -66,7 +66,7 @@ void LampObject::Init()
 	     mat.TextureEnable = true;
 	     auto m = std::make_unique<Material>();
 	     m->Create(mat);
-	     m_Materiales.push_back(std::move(m));
+	     m_Materials.push_back(std::move(m));
 	 }
 }
 
@@ -112,8 +112,8 @@ void LampObject::Draw()
 		s_SharedRenderer.BeforeDraw();
 		for (int i = 0; i < (int)m_subsets.size(); ++i)
 		{
-			m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
-			if (m_Materiales[m_subsets[i].MaterialIdx]->isTextureEnable())
+			m_Materials[m_subsets[i].MaterialIdx]->SetGPU();
+			if (m_Materials[m_subsets[i].MaterialIdx]->isTextureEnable())
 				m_Textures[m_subsets[i].MaterialIdx]->SetGPU();
 			s_SharedRenderer.DrawSubset(
 				m_subsets[i].IndexNum, m_subsets[i].IndexBase, m_subsets[i].VertexBase);

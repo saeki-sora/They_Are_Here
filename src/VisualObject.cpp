@@ -132,7 +132,8 @@ void VisualObject::Uninit()
 
 void VisualObject::SetTexture(const char* imgname)
 {
-    m_Texture.Load(imgname);
+    // VisualObjectはunlitTexturePSのみで描画され、ノーマルマップを参照しないため生成不要
+    m_Texture.Load(imgname, false);
 }
 
 void VisualObject::SetShader(const char* vsPath, const char* psPath)

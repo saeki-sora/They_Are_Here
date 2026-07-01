@@ -62,7 +62,7 @@ void GoalKey::Init()
         m->Create(materials[i]);
 
         // マテリアルオブジェクトを配列に追加
-        m_Materiales.push_back(std::move(m));
+        m_Materials.push_back(std::move(m));
     }
 
 	m_Rotation.x = XMConvertToRadians(90.0f); // X軸に90度回転させて立たせる
@@ -113,9 +113,9 @@ void GoalKey::Draw()
     for (int i = 0; i < m_subsets.size(); ++i)
     {
         // マテリアルをセット
-        m_Materiales[m_subsets[i].MaterialIdx]->SetGPU();
+        m_Materials[m_subsets[i].MaterialIdx]->SetGPU();
 
-        if (m_Materiales[m_subsets[i].MaterialIdx]->isTextureEnable())
+        if (m_Materials[m_subsets[i].MaterialIdx]->isTextureEnable())
         {
             m_Textures[m_subsets[i].MaterialIdx]->SetGPU();
         }

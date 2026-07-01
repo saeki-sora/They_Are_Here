@@ -32,23 +32,12 @@ public:
     DirectX::SimpleMath::Vector3 size;     // ボックスのサイズ
     DirectX::SimpleMath::Quaternion rotation; // ボックスの回転 (OBB用)
 
-    SimpleBoxCollider(const DirectX::SimpleMath::Vector3& center, const DirectX::SimpleMath::Vector3& size)
-        : center(center), size(size), rotation(DirectX::SimpleMath::Quaternion::Identity) {
-    }
+    SimpleBoxCollider(const DirectX::SimpleMath::Vector3& center, const DirectX::SimpleMath::Vector3& size);
 
     bool CheckCollision(const SimpleBoxCollider& other) const;// 当たり判定チェック (AABB方式)
 
-    DirectX::BoundingBox ToBoundingBox() const
-    {
-        // 回転を考慮しない最大内包AABBが必要な場合用
-        return DirectX::BoundingBox(center, size * 0.5f);
-    }
-
-    DirectX::BoundingOrientedBox ToBoundingOrientedBox() const
-    {
-        // OBB作成。Extentsはサイズの半分になるため 0.5倍 する
-        return DirectX::BoundingOrientedBox(center, size * 0.5f, rotation);
-    }
+    DirectX::BoundingBox ToBoundingBox() const; // 回転を考慮しない最大内包AABBが必要な場合用
+    DirectX::BoundingOrientedBox ToBoundingOrientedBox() const; // OBB作成
 
     void DrawDebugCollider(const Camera& cam) const;// デバッグ用のコライダービジュアルを描画する関数
 

@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "EnemyState_loversChase.h"
-#include "loversEnemy.h"
+#include "LoverEnemy.h"
 #include "EnemyState_Search.h"
 #include "Game.h"
 #include "Player.h"
@@ -20,7 +20,7 @@ void EnemyState_loversChase::Enter(Enemy* enemy)
 
 void EnemyState_loversChase::Update(Enemy* enemy, float deltaTime)
 {
-    auto* flanker = static_cast<loversEnemy*>(enemy);
+    auto* flanker = static_cast<LoverEnemy*>(enemy);
     m_PathUpdateTimer += deltaTime;
 
 
@@ -46,7 +46,7 @@ void EnemyState_loversChase::Update(Enemy* enemy, float deltaTime)
     {
         targetPos = flanker->GetLastPlayerPos(); // CanSeePlayer内で更新される
         hasTarget = true;
-        // ※loversEnemy::Updateで「見えたらm_IsFlankingMode = false」にしているので、
+        // ※LoverEnemy::Updateで「見えたらm_IsFlankingMode = false」にしているので、
         // 次回のComputePathToは通常ルート（最短）になります。
     }
     // 見えていないが、裏取りモードなら共有位置

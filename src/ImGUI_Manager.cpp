@@ -5,6 +5,7 @@
 #include "Enemy.h"
 #include "EnemyDebugData.h"
 #include "PostProcessManager.h"
+#include "Game.h"
 
 bool ImGUI_Manager::s_Initialized     = false;
 bool ImGUI_Manager::s_Visible         = false;
@@ -50,7 +51,23 @@ void ImGUI_Manager::DrawPanels()
     static bool s_PPrev = false;
     bool pNow = (GetAsyncKeyState('P') & 0x8000) != 0;
 
-    if (pNow && !s_PPrev) s_Visible = !s_Visible;
+    if (pNow && !s_PPrev)
+    {
+        s_Visible = !s_Visible;
+
+        // パネル表示中はマウスをImGui操作に使うため、FPSカメラのキャプチャを解放する
+        Camera& cam = Game::GetInstance().GetMainCamera();
+        if (s_Visible)
+        {
+            cam.ReleaseMouseImmediate();
+            cam.SetClickToRecapture(false); // パネル操作中はクリックで誤キャプチャされないよう無効化
+        }
+        else
+        {
+            cam.SetClickToRecapture(true);
+            cam.RecaptureMouseImmediate();
+        }
+    }
     s_PPrev = pNow;
 
     if (!s_Visible) return;
