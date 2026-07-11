@@ -13,8 +13,13 @@ void EnemyState_loversChase::Enter(Enemy* enemy)
     enemy->SetCurrentMaxSpeed(enemy->GetChaseSpeed());
     m_PathUpdateTimer = 0.0f;
 
-	EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始
-	SoundManager::GetInstance().PlaySE(SoundTag::SE_Found);
+    // 裏取り役は相方の通知だけでこのステートに入ることがあり、
+    // 自分自身がプレイヤーを視認していない場合は発見扱いにしない
+    if (enemy->CanSeePlayer())
+    {
+        EffectManager::GetInstance().StartEffect<FoundEffect>();// 発見エフェクト開始
+        SoundManager::GetInstance().PlaySE(SoundTag::SE_Found);
+    }
 }
 
 

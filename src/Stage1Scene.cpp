@@ -585,16 +585,16 @@ void Stage1Scene::OnDrawUI()
 	m_OptionGuide->SetScale(tutW, tutH, 1.0f);
 	m_OptionGuide->SetPosition(tutX, tutY, 0.0f);
 	m_OptionGuide->Draw();
-
-	// カギ取得通知（非表示中は内部で描画をスキップする）
-	m_KeyPickupNotice->Draw();
 }
 
 
 
-// エフェクトより上に描画するUI（ミニマップ・ポーズメニュー）
+// エフェクトより上に描画するUI（カギ取得通知・ミニマップ・ポーズメニュー）
 void Stage1Scene::OnDrawOverlayUI()
 {
+	// カギ取得通知（透明化エフェクトに隠れないよう、エフェクトより手前に描画する）
+	m_KeyPickupNotice->Draw();
+
 	if (m_MiniMap)
 	{
 		m_MiniMap->Draw();

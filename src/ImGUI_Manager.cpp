@@ -15,7 +15,7 @@ static constexpr const char* JP_FONT_PATH = "assets/font/ZenMaruGothic-Regular.t
 
 bool ImGUI_Manager::s_Initialized     = false;
 bool ImGUI_Manager::s_Visible         = false;
-bool ImGUI_Manager::s_CursorVisible   = true;
+bool ImGUI_Manager::s_CursorVisible   = false;
 int  ImGUI_Manager::s_SelectedEnemyUID = -1;
 
 // ============================================================
@@ -82,13 +82,13 @@ void ImGUI_Manager::DrawPanels()
     {
         s_Visible = !s_Visible;
 
-        // パネル表示中はマウスをImGui操作に使うため、FPSカメラのキャプチャを解放する
+        // パネルを開いた直後はカーソルを表示せず、視点操作を維持する（Iキーで必要な時だけ表示に切り替える）
         Camera& cam = Game::GetInstance().GetMainCamera();
         if (s_Visible)
         {
-            cam.ReleaseMouseImmediate();
+            cam.RecaptureMouseImmediate();
             cam.SetClickToRecapture(false); // パネル操作中はクリックで誤キャプチャされないよう無効化
-            s_CursorVisible = true; // パネルを開いた直後はカーソルを表示した状態にする
+            s_CursorVisible = false; // パネルを開いた直後はカーソルを非表示のままにする
         }
         else
         {
