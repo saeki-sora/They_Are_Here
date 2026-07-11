@@ -28,8 +28,8 @@ void DifficultySelectScene::OnInit()
     m_Background->Init();
     m_Background->SetTexture("assets/texture/SelectBack.png");
     m_Background->SetScale(
-        static_cast<float>(Application::GetWidth()),
-        static_cast<float>(Application::GetHeight()),
+        static_cast<float>(Application::VIRTUAL_WIDTH),
+        static_cast<float>(Application::VIRTUAL_HEIGHT),
         1.0f);
     m_Background->SetPosition(0.0f, 0.0f, 0.0f);
 

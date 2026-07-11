@@ -5,6 +5,7 @@
 #include "TitleScene.h"
 #include "VisualObject.h"
 #include "ResultData.h"
+#include "Application.h"
 
 // 数字1桁を Number.png スプライトシートから描画する
 static void AddDigit(GameClearScene* scene, int digit, float x, float y)
@@ -27,7 +28,10 @@ void GameClearScene::OnInit()
 	{
 		shared_pt->SetPosition(0.0f, 0.0f, 0.0f);
 		shared_pt->SetTexture("assets/texture/GameClearBackGround.png");
-		shared_pt->SetScale(1280.0f, 720.0f, 0.0f);
+		// 仮想解像度いっぱいのサイズ（2D描画は仮想解像度基準）
+		shared_pt->SetScale(
+			static_cast<float>(Application::VIRTUAL_WIDTH),
+			static_cast<float>(Application::VIRTUAL_HEIGHT), 0.0f);
 	}
 
 	auto weak_pt3 = AddObject<VisualObject>();

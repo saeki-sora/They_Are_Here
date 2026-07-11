@@ -80,8 +80,8 @@ void SootRainEffect::Respawn(Particle& p, bool forceNear)
     // 近景レイヤー（大きめ＆少し速い）を控えめに混ぜる
     p.nearLayer = forceNear ? true : RandChance(0.08f);
 
-    // Renderer::SetWorldViewProjection2D() は Application::GetWidth/Height 基準で投影しているため、
-    // Effect側も同じスクリーンサイズ基準で範囲を作る（ズレると途中で消える原因になる）
+    // Renderer::SetWorldViewProjection2D() は仮想解像度（Application::VIRTUAL_WIDTH/HEIGHT）基準で
+    // 投影しているため、Effect側も同じ仮想解像度基準で範囲を作る（ズレると途中で消える原因になる）
     const float halfW = static_cast<float>(m_ScreenW) * 0.5f;
     const float halfH = static_cast<float>(m_ScreenH) * 0.5f;
 

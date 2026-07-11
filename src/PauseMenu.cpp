@@ -102,8 +102,9 @@ void PauseMenu::Draw()
 {
     if (!m_IsActive) return;
 
-    const float screenW = (float)Application::GetWidth();
-    const float screenH = (float)Application::GetHeight();
+    // 2D描画は仮想解像度基準なのでレイアウトも仮想解像度で計算する
+    const float screenW = (float)Application::VIRTUAL_WIDTH;
+    const float screenH = (float)Application::VIRTUAL_HEIGHT;
 
     // スライドオフセット計算
     float tutorialOffsetX = 0.0f;

@@ -99,9 +99,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="utility.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>ソース ファイル\Camera</Filter>
     </ClCompile>
@@ -312,6 +309,9 @@
     <ClCompile Include="PauseMenu.cpp">
       <Filter>ソース ファイル\System</Filter>
     </ClCompile>
+    <ClCompile Include="KeyPickupNotice.cpp">
+      <Filter>ソース ファイル\System</Filter>
+    </ClCompile>
     <ClCompile Include="..\imgui-master\imgui-master\imgui.cpp">
       <Filter>ソース ファイル\ImGui</Filter>
     </ClCompile>
@@ -336,11 +336,14 @@
     <ClCompile Include="..\imgui-master\imgui-master\imgui_widgets.cpp">
       <Filter>ソース ファイル\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="utility.cpp">
+      <Filter>ソース ファイル\System</Filter>
+    </ClCompile>
+    <ClCompile Include="ResultData.cpp">
+      <Filter>ソース ファイル\System</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="utility.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>ヘッダー ファイル\Camera</Filter>
     </ClInclude>
@@ -569,11 +572,20 @@
     <ClInclude Include="PauseMenu.h">
       <Filter>ヘッダー ファイル\System</Filter>
     </ClInclude>
+    <ClInclude Include="KeyPickupNotice.h">
+      <Filter>ヘッダー ファイル\System</Filter>
+    </ClInclude>
     <ClInclude Include="EnemyDebugData.h">
       <Filter>ヘッダー ファイル\Object\Enemy</Filter>
     </ClInclude>
     <ClInclude Include="SoundTag.h">
       <Filter>ヘッダー ファイル\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="utility.h">
+      <Filter>ヘッダー ファイル\System</Filter>
+    </ClInclude>
+    <ClInclude Include="ResultData.h">
+      <Filter>ヘッダー ファイル\System</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -631,9 +643,6 @@
     <FxCompile Include="shader\DashEffectPS.hlsl">
       <Filter>リソース ファイル</Filter>
     </FxCompile>
-    <FxCompile Include="shader\shadowVS.hlsl" />
-    <FxCompile Include="shader\shadowPS.hlsl" />
-    <FxCompile Include="shader\shadowSkinnedVS.hlsl" />
     <FxCompile Include="shader\postCommon.hlsl">
       <Filter>リソース ファイル</Filter>
     </FxCompile>
@@ -662,6 +671,15 @@
       <Filter>リソース ファイル</Filter>
     </FxCompile>
     <FxCompile Include="shader\FXAAPS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\shadowVS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\shadowPS.hlsl">
+      <Filter>リソース ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\shadowSkinnedVS.hlsl">
       <Filter>リソース ファイル</Filter>
     </FxCompile>
   </ItemGroup>

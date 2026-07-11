@@ -530,9 +530,10 @@ void MiniMap::DrawUI()
 
 	//---------------------------------------------------------
 	// レイアウト計算(画面中央原点用)
+	// 2D描画は仮想解像度基準なのでレイアウトも仮想解像度で計算する
 	//---------------------------------------------------------
-	const float screenW = (float)Application::GetWidth();
-	const float screenH = (float)Application::GetHeight();
+	const float screenW = (float)Application::VIRTUAL_WIDTH;
+	const float screenH = (float)Application::VIRTUAL_HEIGHT;
 	const float halfW = screenW * 0.5f;
 	const float halfH = screenH * 0.5f;
 

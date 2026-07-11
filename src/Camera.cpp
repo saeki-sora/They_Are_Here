@@ -267,8 +267,9 @@ void Camera::SetCamera(int mode)
 		//プロジェクション行列の生成
 		float nearPlane = 1.0f;       // ニアクリップ
 		float farPlane = 10000.0f;      // ファークリップ
-		Matrix projectionMatrix = DirectX::XMMatrixOrthographicLH(static_cast<float>(Application::GetWidth()),
-			static_cast<float>(Application::GetHeight()), nearPlane, farPlane);
+		// 2Dは仮想解像度基準で投影する（実解像度が変わってもUIレイアウトを維持するため）
+		Matrix projectionMatrix = DirectX::XMMatrixOrthographicLH(static_cast<float>(Application::VIRTUAL_WIDTH),
+			static_cast<float>(Application::VIRTUAL_HEIGHT), nearPlane, farPlane);
 
 		projectionMatrix = DirectX::XMMatrixTranspose(projectionMatrix);
 		Renderer::SetProjectionMatrix(&projectionMatrix);

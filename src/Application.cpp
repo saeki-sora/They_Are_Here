@@ -68,6 +68,19 @@ bool Application::InitApp()
 
 #endif // DEBUG
 
+	// DPIスケーリング環境でウィンドウが仮想化されて全画面がぼやけるのを防ぐ
+	// （Per-Monitor V2。古いOSには関数が無いため動的取得し、SDKの型定義にも依存しない）
+	if (HMODULE user32 = GetModuleHandle(TEXT("user32.dll")))
+	{
+		using SetDpiAwarenessContextFn = BOOL(WINAPI*)(HANDLE);
+		auto setDpiAwareness = reinterpret_cast<SetDpiAwarenessContextFn>(
+			GetProcAddress(user32, "SetProcessDpiAwarenessContext"));
+		if (setDpiAwareness)
+		{
+			setDpiAwareness(reinterpret_cast<HANDLE>(-4)); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+		}
+	}
+
 	// ウィンドウの初期化.
 	if (!InitWnd())
 	{
@@ -128,14 +141,17 @@ bool Application::InitWnd()
 	// インスタンスハンドル設定.
 	m_hInst = hInst;
 
-	// ウィンドウのサイズを設定.
-	RECT rc = {};
-	rc.right = static_cast<LONG>(m_Width);
-	rc.bottom = static_cast<LONG>(m_Height);
+	// デスクトップ解像度を取得してフルスクリーンにする（取得失敗時は指定サイズのまま）
+	const int desktopW = GetSystemMetrics(SM_CXSCREEN);
+	const int desktopH = GetSystemMetrics(SM_CYSCREEN);
+	if (desktopW > 0 && desktopH > 0)
+	{
+		m_Width = static_cast<uint32_t>(desktopW);
+		m_Height = static_cast<uint32_t>(desktopH);
+	}
 
-	// ウィンドウサイズを調整.
-	auto style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
-	AdjustWindowRect(&rc, style, FALSE);
+	// ボーダーレスフルスクリーン（枠なしで画面全体を覆う）
+	auto style = WS_POPUP;
 
 	// ウィンドウを生成.
 	m_hWnd = CreateWindowEx(
@@ -143,10 +159,10 @@ bool Application::InitWnd()
 		ClassName,
 		WindowName,
 		style,
-		CW_USEDEFAULT,
-		CW_USEDEFAULT,
-		rc.right - rc.left,
-		rc.bottom - rc.top,
+		0,
+		0,
+		static_cast<int>(m_Width),
+		static_cast<int>(m_Height),
 		nullptr,
 		nullptr,
 		m_hInst,
@@ -308,7 +324,8 @@ LRESULT CALLBACK Application::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 	case WM_CLOSE:  // 「x」ボタンが押されたら
 	{
-		int res = MessageBoxW(NULL, L"終了しますか？", L"確認", MB_OKCANCEL);
+		// フルスクリーンの背面に隠れないよう、親ウィンドウを指定して表示する
+		int res = MessageBoxW(hWnd, L"終了しますか？", L"確認", MB_OKCANCEL);
 		if (res == IDOK) {
 
 			Game::GetInstance().Uninit();

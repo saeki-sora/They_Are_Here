@@ -163,6 +163,10 @@ void Stage1Scene::OnInit()
 	m_OptionMenu = std::make_unique<PauseMenu>();
 	m_OptionMenu->Init();
 
+	m_KeyPickupNotice = std::make_unique<KeyPickupNotice>();
+	m_KeyPickupNotice->Init();
+	m_HadKeyLastFrame = false;
+
 	// マップオブジェクトの生成
 	selectedMap.SpawnObjects(this);
 
@@ -299,7 +303,6 @@ void Stage1Scene::OnUpdate(float deltaTime)
 
 	if (IsGamePaused()) return; // オブジェクト更新は SceneBase がスキップ
 
-
 	// ライトのちらつき
 	m_LightFlickerTimer += deltaTime;
 	float flicker = 0.95f
@@ -326,6 +329,18 @@ void Stage1Scene::OnUpdate(float deltaTime)
 	ResultData::s_ElapsedTime = m_GameTimer;
 
 	Enemy::ResetPathCalculationCount();// 今フレームのパス計算数をリセットする
+
+	// カギ取得通知：取得した瞬間だけ再生する
+	if (auto player = FindObject<Player>().lock())
+	{
+		bool hasKey = player->HasKey();
+		if (hasKey && !m_HadKeyLastFrame)
+		{
+			m_KeyPickupNotice->Play();
+		}
+		m_HadKeyLastFrame = hasKey;
+	}
+	m_KeyPickupNotice->Update(deltaTime);
 
 	// BGM管理：開始・追跡中のPause/Resume・距離ベース音量制御
 	{
@@ -571,6 +586,8 @@ void Stage1Scene::OnDrawUI()
 	m_OptionGuide->SetPosition(tutX, tutY, 0.0f);
 	m_OptionGuide->Draw();
 
+	// カギ取得通知（非表示中は内部で描画をスキップする）
+	m_KeyPickupNotice->Draw();
 }
 
 
@@ -604,6 +621,12 @@ void Stage1Scene::OnUnload()
 	{
 		m_OptionMenu->Uninit();
 		m_OptionMenu.reset();
+	}
+
+	if (m_KeyPickupNotice)
+	{
+		m_KeyPickupNotice->Uninit();
+		m_KeyPickupNotice.reset();
 	}
 
 	SceneBase::OnUnload();

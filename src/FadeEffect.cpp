@@ -1,7 +1,6 @@
 ﻿#include "pch.h"
 #include "FadeEffect.h"
 #include "Renderer.h"
-#include "Application.h" // 画面サイズ取得のためにインクルード
 
 // 静的メンバ変数の実体を定義
 ComPtr<ID3D11Buffer>      FadeEffect::m_vertexBuffer;
@@ -34,9 +33,7 @@ void FadeEffect::InitResources()
 
 	m_shader.Create("shader/VS_Fade.hlsl", "shader/PS_Fade.hlsl");
 
-	//画面全体を覆う四角形の頂点データを作成
-	float w = static_cast<float>(Application::GetWidth());
-	float h = static_cast<float>(Application::GetHeight());
+	//画面全体を覆う四角形の頂点データを作成（NDC座標なので解像度に依存しない）
 	VERTEX_3D vertices[] = {
 			{ {-1.0f,  1.0f, 0.0f}, {}, {1,1,1,1}, {0.0f, 0.0f} }, // 左上
 			{ { 1.0f,  1.0f, 0.0f}, {}, {1,1,1,1}, {1.0f, 0.0f} }, // 右上

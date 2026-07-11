@@ -566,95 +566,108 @@ void PostProcessManager::Execute()
 void PostProcessManager::DrawImGui()
 {
 	ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-	ImGui::Checkbox("Post Process Enabled", &m_Enabled);
+	ImGui::Checkbox("ポストプロセス有効", &m_Enabled);
 	if (!m_Enabled) return;
 
-	if (ImGui::CollapsingHeader("Tonemap / Color", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("トーンマップ / カラー", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Checkbox("Tonemap Bypass", &m_TonemapBypass);
-		ImGui::SliderFloat("Exposure", &m_Exposure, 0.1f, 4.0f);
-		ImGui::SliderFloat("Saturation", &m_Saturation, 0.0f, 2.0f);
-		ImGui::SliderFloat("Tint Strength", &m_TintStrength, 0.0f, 1.0f);
+		ImGui::Checkbox("トーンマップ無効化", &m_TonemapBypass);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("ONにするとトーンマップ処理を素通しにする");
+		ImGui::SliderFloat("露出", &m_Exposure, 0.1f, 4.0f);
+		ImGui::SliderFloat("彩度", &m_Saturation, 0.0f, 2.0f);
+		ImGui::SliderFloat("色調の強さ", &m_TintStrength, 0.0f, 1.0f);
 		float tint[3] = { m_TintColor.x, m_TintColor.y, m_TintColor.z };
-		if (ImGui::ColorEdit3("Tint Color", tint))
+		if (ImGui::ColorEdit3("色調カラー", tint))
 		{
 			m_TintColor = Vector3(tint[0], tint[1], tint[2]);
 		}
-		ImGui::SliderFloat("Vignette", &m_VignetteIntensity, 0.0f, 1.0f);
-		ImGui::SliderFloat("Vignette Power", &m_VignettePower, 0.5f, 4.0f);
-		ImGui::SliderFloat("Film Grain", &m_GrainIntensity, 0.0f, 0.2f);
+		ImGui::SliderFloat("ビネット強度", &m_VignetteIntensity, 0.0f, 1.0f);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("画面端を暗くする効果の強さ");
+		ImGui::SliderFloat("ビネット減衰率", &m_VignettePower, 0.5f, 4.0f);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("画面端が暗くなり始める範囲の広さ");
+		ImGui::SliderFloat("フィルムグレイン", &m_GrainIntensity, 0.0f, 0.2f);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("画面にノイズ（粒状感）を重ねる強さ");
 	}
 
-	if (ImGui::CollapsingHeader("Bloom", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("ブルーム", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Checkbox("Bloom Enabled", &m_BloomEnabled);
-		ImGui::SliderFloat("Threshold", &m_BloomThreshold, 0.0f, 3.0f);
-		ImGui::SliderFloat("Soft Knee", &m_BloomKnee, 0.01f, 1.0f);
-		ImGui::SliderFloat("Intensity", &m_BloomIntensity, 0.0f, 3.0f);
+		ImGui::Checkbox("ブルーム有効", &m_BloomEnabled);
+		ImGui::SliderFloat("しきい値", &m_BloomThreshold, 0.0f, 3.0f);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("この明るさを超えた部分だけ発光させる");
+		ImGui::SliderFloat("ソフトニー", &m_BloomKnee, 0.01f, 1.0f);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("しきい値付近の輝度をなめらかに繋げる度合い");
+		ImGui::SliderFloat("強度", &m_BloomIntensity, 0.0f, 3.0f);
 	}
 
 	if (ImGui::CollapsingHeader("SSAO", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Checkbox("SSAO Enabled", &m_SSAOEnabled);
-		ImGui::SliderFloat("Radius", &m_SSAORadius, 5.0f, 150.0f);
-		ImGui::SliderFloat("SSAO Intensity", &m_SSAOIntensity, 0.0f, 4.0f);
-		ImGui::SliderFloat("Bias", &m_SSAOBias, 0.0f, 0.2f);
-		ImGui::Checkbox("AO Debug View", &m_SSAODebugView);
+		ImGui::Checkbox("SSAO有効", &m_SSAOEnabled);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("物体の隙間・接地面を暗くする環境遮蔽効果");
+		ImGui::SliderFloat("半径", &m_SSAORadius, 5.0f, 150.0f);
+		ImGui::SliderFloat("SSAO強度", &m_SSAOIntensity, 0.0f, 4.0f);
+		ImGui::SliderFloat("バイアス", &m_SSAOBias, 0.0f, 0.2f);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("平坦な面が誤って暗くなるのを防ぐための補正値");
+		ImGui::Checkbox("AOデバッグ表示", &m_SSAODebugView);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("遮蔽の効果だけを白黒で確認表示する");
 	}
 
-	if (ImGui::CollapsingHeader("Volumetric Light", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("ボリュームライト", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Checkbox("Volumetric Enabled", &m_VolumetricEnabled);
-		ImGui::SliderFloat("Scatter Intensity", &m_VolumetricIntensity, 0.0f, 5.0f);
-		ImGui::SliderInt("Steps", &m_VolumetricSteps, 8, 32);
-		ImGui::SliderFloat("Max Distance", &m_VolumetricMaxDist, 200.0f, 3000.0f);
+		ImGui::Checkbox("ボリュームライト有効", &m_VolumetricEnabled);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("光が空気中で散乱して見える光条（光の筋）の表現");
+		ImGui::SliderFloat("散乱強度", &m_VolumetricIntensity, 0.0f, 5.0f);
+		ImGui::SliderInt("ステップ数", &m_VolumetricSteps, 8, 32);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("多いほど滑らかになるが負荷が上がる");
+		ImGui::SliderFloat("最大距離", &m_VolumetricMaxDist, 200.0f, 3000.0f);
 	}
 
 	if (ImGui::CollapsingHeader("FXAA", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Checkbox("FXAA Enabled", &m_FXAAEnabled);
+		ImGui::Checkbox("FXAA有効", &m_FXAAEnabled);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("輪郭のギザギザを滑らかにするアンチエイリアス処理");
 	}
 
-	if (ImGui::CollapsingHeader("Surface", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("表面", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		float normalStrength = Renderer::GetNormalMapStrength();
-		if (ImGui::SliderFloat("Normal Map Strength", &normalStrength, 0.0f, 3.0f))
+		if (ImGui::SliderFloat("法線マップ強度", &normalStrength, 0.0f, 3.0f))
 		{
 			Renderer::SetNormalMapStrength(normalStrength);
 		}
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("表面の凹凸表現（ノーマルマップ）の強さ");
 	}
 
 	ImGui::Separator();
 
 	// 現在の設定をJSONファイルに保存
-	if (ImGui::Button("Save JSON", ImVec2(-1, 0)))
+	if (ImGui::Button("JSONに保存", ImVec2(-1, 0)))
 	{
 		SaveSettings(GRAPHICS_SETTINGS_PATH);
 		ImGui::OpenPopup("graphics_saved_popup");
 	}
 	if (ImGui::IsItemHovered())
-		ImGui::SetTooltip("Write current values to graphics_param.json");
+		ImGui::SetTooltip("現在の値を graphics_param.json に書き込む");
 
 	if (ImGui::BeginPopup("graphics_saved_popup"))
 	{
-		ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Saved to graphics_param.json");
+		ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "graphics_param.json に保存しました");
 		ImGui::EndPopup();
 	}
 
 	ImGui::Spacing();
 
 	// 保存済みのJSONファイルから設定を読み直す
-	if (ImGui::Button("Load JSON", ImVec2(-1, 0)))
+	if (ImGui::Button("JSONを読み込む", ImVec2(-1, 0)))
 	{
 		LoadSettings(GRAPHICS_SETTINGS_PATH);
 		ImGui::OpenPopup("graphics_loaded_popup");
 	}
 	if (ImGui::IsItemHovered())
-		ImGui::SetTooltip("Reload values from graphics_param.json");
+		ImGui::SetTooltip("graphics_param.json から値を再読み込みする");
 
 	if (ImGui::BeginPopup("graphics_loaded_popup"))
 	{
-		ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Loaded from graphics_param.json");
+		ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "graphics_param.json から読み込みました");
 		ImGui::EndPopup();
 	}
 }

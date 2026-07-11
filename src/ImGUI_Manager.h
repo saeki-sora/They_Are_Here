@@ -19,12 +19,14 @@ private:
 
 	static bool s_Initialized;// ImGuiの初期化状態
 	static bool s_Visible;// フラグUIの表示状態
+	static bool s_CursorVisible;// デバッグUI表示中のマウスカーソル表示状態（Iキーで切り替え）
 
 	static int  s_SelectedEnemyUID;// 選択中の敵のUID
 
 	static void DrawEnemyParamPanel();// 敵のパラメータを表示するパネル
 	static void DrawFSMPanel();// 敵のFSMを表示するパネル
 	static void DrawGraphicsPanel();// グラフィック設定を表示するパネル
+	static void DrawDebugHelpPanel();// デバッグ操作方法を表示するパネル
 
 	// FSMグラフを描画
     static void DrawFSMGraph(const std::string& currentState);

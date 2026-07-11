@@ -5,6 +5,7 @@
 #include "VisualObject.h"
 #include "Renderer.h"
 #include "PauseMenu.h"
+#include "KeyPickupNotice.h"
 
 class Stage1Scene : public SceneBase
 {
@@ -72,6 +73,9 @@ private:
 	std::unique_ptr<VisualObject> m_OptionGuide; // 操作説明UI
 
     std::unique_ptr<PauseMenu> m_OptionMenu;  // ポーズメニュー
+
+    std::unique_ptr<KeyPickupNotice> m_KeyPickupNotice; // カギ取得通知UI
+    bool m_HadKeyLastFrame = false; // 前フレームでカギを所持していたか（取得の瞬間を検知するため）
 
     float m_GameTimer = 0.0f; // プレイ時間（イントロ終了後から計測、秒）
 

@@ -6,9 +6,16 @@
 #include "EnemyDebugData.h"
 #include "PostProcessManager.h"
 #include "Game.h"
+#include "Application.h"
+#include "DebugManager.h"
+
+// 日本語表示用フォント
+// 実行環境のWindowsに依存しないよう、再配布可能なフォントをプロジェクトに同梱している（OFLライセンス）
+static constexpr const char* JP_FONT_PATH = "assets/font/ZenMaruGothic-Regular.ttf";
 
 bool ImGUI_Manager::s_Initialized     = false;
 bool ImGUI_Manager::s_Visible         = false;
+bool ImGUI_Manager::s_CursorVisible   = true;
 int  ImGUI_Manager::s_SelectedEnemyUID = -1;
 
 // ============================================================
@@ -21,7 +28,27 @@ void ImGUI_Manager::Init(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* c
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
+    // 実解像度は2D UIの仮想解像度より大きくなり得るため、フォントとスタイルサイズを実解像度に合わせて拡大する
+    // （そのままだとフルスクリーンの実解像度上で文字やスライダーが小さく表示されてしまう）
+    const float uiScale = static_cast<float>(Application::GetWidth()) / static_cast<float>(Application::VIRTUAL_WIDTH);
+    const float fontSize = 16.0f * uiScale; // 日本語は既定の13pxだと潰れやすいため少し大きめを基準にする
+
+    // 日本語フォントを読み込む（文字化け防止。既定フォントは半角英数字にしか対応していないため）
+    ImFont* jpFont = nullptr;
+    if (std::filesystem::exists(JP_FONT_PATH))
+    {
+        jpFont = io.Fonts->AddFontFromFileTTF(JP_FONT_PATH, fontSize, nullptr, io.Fonts->GetGlyphRangesJapanese());
+    }
+    if (!jpFont)
+    {
+        // フォントファイルが同梱されていない実行環境向けのフォールバック（この場合、日本語表示は文字化けする）
+        ImFontConfig fallbackConfig;
+        fallbackConfig.SizePixels = fontSize;
+        io.Fonts->AddFontDefault(&fallbackConfig);
+    }
+
     ImGui::StyleColorsDark();
+    ImGui::GetStyle().ScaleAllSizes(uiScale); // パディング・スライダー等のウィジェットサイズもスケーリング
 
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(device, context);
@@ -61,6 +88,7 @@ void ImGUI_Manager::DrawPanels()
         {
             cam.ReleaseMouseImmediate();
             cam.SetClickToRecapture(false); // パネル操作中はクリックで誤キャプチャされないよう無効化
+            s_CursorVisible = true; // パネルを開いた直後はカーソルを表示した状態にする
         }
         else
         {
@@ -72,9 +100,25 @@ void ImGUI_Manager::DrawPanels()
 
     if (!s_Visible) return;
 
+    // Iキーでマウスカーソルの表示/非表示を切り替える（デバッグUI表示中のみ）
+    // カーソル表示中は視点操作を無効化し、非表示中は視点操作を有効化する
+    static bool s_IPrev = false;
+    bool iNow = (GetAsyncKeyState('I') & 0x8000) != 0;
+
+    if (iNow && !s_IPrev)
+    {
+        s_CursorVisible = !s_CursorVisible;
+
+        Camera& cam = Game::GetInstance().GetMainCamera();
+        if (s_CursorVisible) cam.ReleaseMouseImmediate();   // カーソル表示 → 視点操作OFF
+        else                 cam.RecaptureMouseImmediate(); // カーソル非表示 → 視点操作ON
+    }
+    s_IPrev = iNow;
+
     DrawEnemyParamPanel();
     DrawFSMPanel();
     DrawGraphicsPanel();
+    DrawDebugHelpPanel();
 }
 
 // ============================================================
@@ -82,8 +126,80 @@ void ImGUI_Manager::DrawPanels()
 // ============================================================
 void ImGUI_Manager::DrawGraphicsPanel()
 {
-    ImGui::Begin("Graphics");
+    ImGui::Begin("グラフィック設定");
     PostProcessManager::GetInstance().DrawImGui();
+    ImGui::End();
+}
+
+// ============================================================
+// デバッグ操作方法パネルを描画（初めてデバッグ機能を使う人向けの早見表）
+// ============================================================
+void ImGUI_Manager::DrawDebugHelpPanel()
+{
+    ImGui::SetNextWindowPos(ImVec2(10, 500), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(420, 320), ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("デバッグ操作説明"))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::TextWrapped("デバッグUI表示中に使えるキー操作の一覧です。");
+    ImGui::Separator();
+
+    DebugManager& dbg = DebugManager::GetInstance();
+
+    // 1行分の「キー / 説明 / 状態(ON/OFF)」を描画するヘルパー
+    auto row = [](const char* key, const char* action, const bool* state)
+    {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::TextUnformatted(key);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextWrapped("%s", action);
+        ImGui::TableSetColumnIndex(2);
+        if (state)
+        {
+            if (*state) ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "ON");
+            else        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "OFF");
+        }
+    };
+
+    if (ImGui::BeginTable("debug_help_table", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+    {
+        ImGui::TableSetupColumn("キー",   ImGuiTableColumnFlags_WidthFixed, 40.0f);
+        ImGui::TableSetupColumn("操作内容", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("状態",   ImGuiTableColumnFlags_WidthFixed, 45.0f);
+        ImGui::TableHeadersRow();
+
+        bool debugOn = dbg.IsDebugModeEnabled();
+        row("P", "デバッグUIの表示切り替え（マウス操作も可能になる）", &debugOn);
+        row("I", "マウスカーソルの表示/非表示切り替え（UI表示中のみ有効）", &s_CursorVisible);
+
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextDisabled("-- 以下はデバッグUI（Pキー）がONの間だけ有効 --");
+
+        bool colliders  = dbg.ShouldShowColliders();
+        bool noClip     = dbg.IsNoClipMode();
+        bool path       = dbg.ShouldShowEnemyPath();
+        bool vision     = dbg.ShouldShowEnemyVision();
+        bool invincible = dbg.IsInvincibleMode();
+        bool whisker    = dbg.ShouldShowEnemyWhisker();
+        bool lamps      = dbg.ShouldShowLampLights();
+
+        row("F1", "当たり判定（コライダー）のワイヤーフレーム表示切り替え", &colliders);
+        row("F2", "ノークリップモード切り替え（壁をすり抜けて自由に移動）", &noClip);
+        row("F3", "敵の経路探索ルート表示切り替え",                       &path);
+        row("F4", "敵の視界（視野範囲）表示切り替え",                     &vision);
+        row("F5", "無敵モード切り替え（敵に捕まらなくなる）",             &invincible);
+        row("F6", "敵のウィスカー（曲がり角回避センサー）表示切り替え",   &whisker);
+        row("F7", "ランプの点光源位置表示切り替え",                       &lamps);
+
+        ImGui::EndTable();
+    }
+
     ImGui::End();
 }
 
@@ -117,7 +233,7 @@ void ImGUI_Manager::DrawEnemyParamPanel()
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(380, 480), ImGuiCond_FirstUseEver);
 
-    if (!ImGui::Begin("Enemy Parameters"))
+    if (!ImGui::Begin("敵パラメータ"))
     {
         ImGui::End();
         return;
@@ -126,62 +242,62 @@ void ImGUI_Manager::DrawEnemyParamPanel()
 	json& data = ConfigManager::GetInstance().GetDataMutable();
     if (!data.is_object())
     {
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "enemy_param.json not loaded.");
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "enemy_param.json が読み込まれていません。");
         ImGui::End();
         return;
     }
 
     // --- Common ---
-    if (ImGui::CollapsingHeader("Common", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::CollapsingHeader("共通", ImGuiTreeNodeFlags_DefaultOpen))
     {
         auto& common = data["Common"];
 
         // JSONのdouble型をfloat型に変換して格納する
         float searchSpeed = common.value("SearchSpeed", 45.0f);
-        if (ImGui::SliderFloat("Search Speed", &searchSpeed, 5.0f, 200.0f, "%.1f"))
+        if (ImGui::SliderFloat("索敵速度", &searchSpeed, 5.0f, 200.0f, "%.1f"))
             common["SearchSpeed"] = searchSpeed;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Patrol movement speed");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("巡回中の移動速度");
 
         float chaseSpeed = common.value("ChaseSpeed", 50.0f);
-        if (ImGui::SliderFloat("Chase Speed", &chaseSpeed, 5.0f, 200.0f, "%.1f"))
+        if (ImGui::SliderFloat("追跡速度", &chaseSpeed, 5.0f, 200.0f, "%.1f"))
             common["ChaseSpeed"] = chaseSpeed;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Speed while chasing the player");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("プレイヤーを追跡している間の速度");
 
         float maxAccel = common.value("MaxAccel", 60.0f);
-        if (ImGui::SliderFloat("Max Accel", &maxAccel, 5.0f, 300.0f, "%.1f"))
+        if (ImGui::SliderFloat("最大加速度", &maxAccel, 5.0f, 300.0f, "%.1f"))
             common["MaxAccel"] = maxAccel;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Acceleration magnitude (higher = reaches top speed faster)");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("加速の強さ（大きいほど最高速度に早く到達する）");
 
         float maxAngVelDeg = common.value("MaxAngVelDeg", 320.0f);
-        if (ImGui::SliderFloat("Max Ang Vel (deg/s)", &maxAngVelDeg, 10.0f, 720.0f, "%.0f"))
+        if (ImGui::SliderFloat("最大旋回速度 (度/秒)", &maxAngVelDeg, 10.0f, 720.0f, "%.0f"))
             common["MaxAngVelDeg"] = maxAngVelDeg;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Max rotation speed in degrees per second");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("1秒あたりの最大回転角度");
     }
 
     // --- Detection ---
-    if (ImGui::CollapsingHeader("Detection", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::CollapsingHeader("索敵", ImGuiTreeNodeFlags_DefaultOpen))
     {
         auto& detect = data["Detection"];
 
         float radius = detect.value("Radius", 800.0f);
-        if (ImGui::SliderFloat("Vision Radius", &radius, 50.0f, 2000.0f, "%.0f"))
+        if (ImGui::SliderFloat("視界半径", &radius, 50.0f, 2000.0f, "%.0f"))
             detect["Radius"] = radius;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far the enemy can see (world units)");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("敵が見える距離（ワールド単位）");
 
         float fov = detect.value("FOV", 90.0f);
-        if (ImGui::SliderFloat("FOV (deg)", &fov, 10.0f, 180.0f, "%.0f"))
+        if (ImGui::SliderFloat("視野角 (度)", &fov, 10.0f, 180.0f, "%.0f"))
             detect["FOV"] = fov;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Field of view angle in degrees");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("視野の角度（度数法）");
 
         float catchRange = detect.value("CatchRange", 30.0f);
-        if (ImGui::SliderFloat("Catch Range", &catchRange, 5.0f, 150.0f, "%.0f"))
+        if (ImGui::SliderFloat("捕捉距離", &catchRange, 5.0f, 150.0f, "%.0f"))
             detect["CatchRange"] = catchRange;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Distance at which the player is caught");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("プレイヤーが捕まる距離");
 
         float lostDuration = detect.value("LostDuration", 5.0f);
-        if (ImGui::SliderFloat("Lost Duration (s)", &lostDuration, 0.5f, 30.0f, "%.1f"))
+        if (ImGui::SliderFloat("見失い継続時間 (秒)", &lostDuration, 0.5f, 30.0f, "%.1f"))
             detect["LostDuration"] = lostDuration;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How long the enemy searches before giving up after losing sight");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("見失ってから諦めるまで捜索を続ける時間");
     }
 
     // --- AI ---
@@ -190,20 +306,20 @@ void ImGUI_Manager::DrawEnemyParamPanel()
         auto& ai = data["AI"];
 
         float chaseInterval = ai.value("ChasePathUpdateInterval", 0.25f);
-        if (ImGui::SliderFloat("Path Update Interval (s)", &chaseInterval, 0.05f, 2.0f, "%.2f"))
+        if (ImGui::SliderFloat("経路再計算間隔 (秒)", &chaseInterval, 0.05f, 2.0f, "%.2f"))
             ai["ChasePathUpdateInterval"] = chaseInterval;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How often the enemy recalculates its path during chase");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("追跡中に経路を再計算する頻度");
 
         float cornerCut = ai.value("CornerCutDist", 15.0f);
-        if (ImGui::SliderFloat("Corner Cut Dist", &cornerCut, 0.0f, 60.0f, "%.1f"))
+        if (ImGui::SliderFloat("コーナーカット距離", &cornerCut, 0.0f, 60.0f, "%.1f"))
             ai["CornerCutDist"] = cornerCut;
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How early the enemy starts turning at corners");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("曲がり角の手前どれくらいから曲がり始めるか");
     }
 
     ImGui::Separator();
 
     // 敵パラメータを全ての敵に適用するボタン
-    if (ImGui::Button("Apply to All Enemies", ImVec2(-1, 0)))
+    if (ImGui::Button("全ての敵に適用", ImVec2(-1, 0)))
     {
         auto enemies = SceneManager::GetInstance().FindAllObjects<Enemy>();
         for (auto& weak : enemies)
@@ -214,12 +330,12 @@ void ImGUI_Manager::DrawEnemyParamPanel()
         ImGui::OpenPopup("applied_popup");
     }
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Push current values to all active enemies immediately");
+        ImGui::SetTooltip("現在の値を全ての出現中の敵に即座に反映する");
 
 	// ポップアップで適用完了のメッセージを表示
     if (ImGui::BeginPopup("applied_popup"))
     {
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Applied to %d enemies!",
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%d体の敵に適用しました！",
             (int)SceneManager::GetInstance().FindAllObjects<Enemy>().size());
         ImGui::EndPopup();
     }
@@ -227,17 +343,17 @@ void ImGUI_Manager::DrawEnemyParamPanel()
     ImGui::Spacing();
 
     // Saveボタンを押すと現在の設定をJSONファイルに保存
-    if (ImGui::Button("Save JSON", ImVec2(-1, 0)))
+    if (ImGui::Button("JSONに保存", ImVec2(-1, 0)))
     {
         ConfigManager::GetInstance().Save("json/enemy_param.json");
         ImGui::OpenPopup("saved_popup");
     }
     if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Write current values to enemy_param.json");
+        ImGui::SetTooltip("現在の値を enemy_param.json に書き込む");
 
     if (ImGui::BeginPopup("saved_popup"))
     {
-        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Saved to enemy_param.json");
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "enemy_param.json に保存しました");
         ImGui::EndPopup();
     }
 
@@ -344,7 +460,7 @@ void ImGUI_Manager::DrawFSMGraph(const std::string& currentState)
     // ステータスがChaseの時はその状態を強調表示
     if (currentState == "EnemyState_StalkerChase" || currentState == "EnemyState_loversChase")
     {
-        ImGui::TextDisabled("(active: %s)", currentState.c_str());
+        ImGui::TextDisabled("(現在の状態: %s)", currentState.c_str());
     }
 }
 
@@ -359,7 +475,7 @@ void ImGUI_Manager::DrawTransitionTimeline(int uid)
     auto it = reg.find(uid);
     if (it == reg.end() || it->second.history.empty())
     {
-        ImGui::TextDisabled("No transitions recorded yet.");
+        ImGui::TextDisabled("まだ状態遷移が記録されていません。");
         return;
     }
 
@@ -406,7 +522,7 @@ void ImGUI_Manager::DrawTransitionTimeline(int uid)
 
     // 最新の状態遷移を表示
     const auto& last = history.back();
-    ImGui::TextDisabled("Latest: %s  (t=%.2fs)", last.stateName.c_str(), last.gameTime);
+    ImGui::TextDisabled("最新: %s  (経過時間 %.2f秒)", last.stateName.c_str(), last.gameTime);
 }
 
 // ============================================================
@@ -418,7 +534,7 @@ void ImGUI_Manager::DrawFSMPanel()
     ImGui::SetNextWindowPos(ImVec2(400, 10), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(420, 400), ImGuiCond_FirstUseEver);
 
-    if (!ImGui::Begin("FSM Visualizer"))
+    if (!ImGui::Begin("状態遷移ビジュアライザ"))
     {
         ImGui::End();
         return;
@@ -427,7 +543,7 @@ void ImGUI_Manager::DrawFSMPanel()
     auto& reg = EnemyDebugData::Registry();
     if (reg.empty())
     {
-        ImGui::TextDisabled("No enemies spawned yet.");
+        ImGui::TextDisabled("敵がまだ出現していません。");
         ImGui::End();
         return;
     }
@@ -481,7 +597,7 @@ void ImGUI_Manager::DrawFSMPanel()
 
         // "Enemy #N  [State]" text
         char rowText[64];
-        snprintf(rowText, sizeof(rowText), "Enemy #%d  [%s]", uid, stateLabel);
+        snprintf(rowText, sizeof(rowText), "敵 #%d  [%s]", uid, stateLabel);
         dl->AddText(ImVec2(rowMin.x + BADGE_SZ + 10.0f,
                            rowMin.y + (ROW_H - ImGui::GetTextLineHeight()) * 0.5f),
                     IM_COL32(220, 220, 220, 255), rowText);
@@ -521,7 +637,7 @@ void ImGUI_Manager::DrawFSMPanel()
     ImGui::Separator();
 
     // transition timeline for selected enemy
-    ImGui::Text("Transition History (oldest -> newest)");
+    ImGui::Text("状態遷移履歴（古い → 新しい）");
     DrawTransitionTimeline(s_SelectedEnemyUID);
 
     ImGui::End();

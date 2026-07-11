@@ -8,16 +8,20 @@
 class Application
 {
 public:
+    // 2D描画用の仮想解像度（UIレイアウトはこの解像度基準で設計されている）
+    static constexpr uint32_t VIRTUAL_WIDTH = 1280;
+    static constexpr uint32_t VIRTUAL_HEIGHT = 720;
+
     Application(uint32_t width, uint32_t height);
     ~Application();
     void Run();
 
-    // 幅を取得
+    // 幅を取得（実際のウィンドウ解像度）
     static uint32_t GetWidth() {
         return m_Width;
     }
 
-    // 高さを取得
+    // 高さを取得（実際のウィンドウ解像度）
     static uint32_t GetHeight() {
         return m_Height;
     }

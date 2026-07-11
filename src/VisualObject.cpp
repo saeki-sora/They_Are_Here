@@ -48,6 +48,7 @@ void VisualObject::Init()
     vertices[3].color = Color(1, 1, 1, 1);
     vertices[3].uv = Vector2(1, 1);
 
+    m_BaseVertices = vertices; // SetAlphaで頂点色を書き換える際の元データとして保持
     m_VertexBuffer.Create(vertices);
 
     // 2. インデックスデータを作成
@@ -184,4 +185,19 @@ void VisualObject::SetUV(const float& nu, const float& nv, const float& sx, cons
     m_NumV = nv;
     m_SplitX = sx;
     m_SplitY = sy;
+}
+
+void VisualObject::SetAlpha(float alpha)
+{
+    m_Alpha = std::clamp(alpha, 0.0f, 1.0f);
+
+    if (m_BaseVertices.empty()) return;
+
+    // 頂点カラーのアルファ値だけ書き換えて頂点バッファへ反映
+    std::vector<VERTEX_3D> vertices = m_BaseVertices;
+    for (auto& v : vertices)
+    {
+        v.color.w = m_Alpha;
+    }
+    m_VertexBuffer.Modify(vertices);
 }

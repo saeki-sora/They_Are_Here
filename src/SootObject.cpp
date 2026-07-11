@@ -69,9 +69,9 @@ void SootObject::Draw()
     Matrix t = Matrix::CreateTranslation(m_Position);
     Matrix world = s * r * t;
 
-    // 2D用のプロジェクション行列
-    float w = (float)Application::GetWidth();
-    float h = (float)Application::GetHeight();
+    // 2D用のプロジェクション行列（仮想解像度基準。実解像度が変わってもレイアウトを維持する）
+    float w = (float)Application::VIRTUAL_WIDTH;
+    float h = (float)Application::VIRTUAL_HEIGHT;
     Matrix proj = Matrix::CreateOrthographicOffCenter(0, w, 0, h, 0, 1.0f);
 
     // WVP行列作成

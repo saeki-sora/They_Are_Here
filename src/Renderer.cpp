@@ -157,6 +157,14 @@ void Renderer::Init()
 
     if (FAILED(hr)) return;
 
+    // Alt+Enterによる排他フルスクリーン切替を無効化（ボーダーレスフルスクリーン運用のため）
+    IDXGIFactory* dxgiFactory = nullptr;
+    if (SUCCEEDED(m_SwapChain->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory))))
+    {
+        dxgiFactory->MakeWindowAssociation(Application::GetWindow(), DXGI_MWA_NO_ALT_ENTER);
+        dxgiFactory->Release();
+    }
+
     // ------------------------------------
     // バックバッファ → RTV を 2 個作成
     // ------------------------------------
@@ -855,10 +863,10 @@ void Renderer::SetWorldViewProjection2D()
 	view = view.Transpose();			// 転置
 	m_DeviceContext->UpdateSubresource(m_ViewBuffer, 0, NULL, &view, 0, 0);
 
-	// 2D描画を左上原点にする
+	// 2D描画は仮想解像度基準で投影する（実解像度が変わってもUIレイアウトを維持するため）
     Matrix projection = DirectX::XMMatrixOrthographicLH(
-        static_cast<float>(Application::GetWidth()),   // ViewRight (右端)
-        static_cast<float>(Application::GetHeight()),  // ViewBottom (下端) ※Y軸下向き
+        static_cast<float>(Application::VIRTUAL_WIDTH),
+        static_cast<float>(Application::VIRTUAL_HEIGHT),
         0.0f,                                          // NearZ
         1.0f);
 

@@ -19,6 +19,9 @@ protected:
 	float m_SplitX = 1;
 	float m_SplitY = 1;
 
+	std::vector<VERTEX_3D> m_BaseVertices; // SetAlphaでの頂点色書き換え用に保持する基本頂点データ
+	float m_Alpha = 1.0f; // 不透明度（フェード演出用）
+
 public:
 
 	VisualObject(
@@ -54,5 +57,8 @@ public:
 
 	// UV座標を指定
 	void SetUV(const float& nu, const float& nv, const float& sx, const float& sy);
+
+	// 不透明度を指定（0.0〜1.0、フェードイン・フェードアウト演出用）
+	void SetAlpha(float alpha);
 };
 

@@ -95,10 +95,10 @@ void TitleScene::OnInit()
 	// 全難易度のマッププランをバックグラウンドで並列生成する。
 	DifficultyManager::GetInstance().PreloadAll();
 
-	//煤エフェクト開始
+	//煤エフェクト開始（2D描画は仮想解像度基準なので範囲も仮想解像度で渡す）
 	m_SootEffect = EffectManager::GetInstance().StartEffect<SootRainEffect>(
-		static_cast<int>(Application::GetWidth()),
-		static_cast<int>(Application::GetHeight()),
+		static_cast<int>(Application::VIRTUAL_WIDTH),
+		static_cast<int>(Application::VIRTUAL_HEIGHT),
 		"assets/texture/Soot_transparent.png",
 		200
 	);
