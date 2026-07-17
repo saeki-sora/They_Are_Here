@@ -111,6 +111,10 @@ void Enemy::ReloadParams()
 
 	// 視野角のコサイン値を再計算（変更が内積判定に反映されるよう毎回計算する）
 	m_FOVThreshold = std::cos(DirectX::XMConvertToRadians(m_DetectionFOV * 0.5f));
+
+	// m_CurrentMaxSpeedは状態遷移時にしか更新されないため、ここで再同期しないと
+	// 索敵/追跡速度を変更してもその場の速度に反映されない
+	m_CurrentMaxSpeed = IsChasing() ? m_ChaseSpeed : m_SearchSpeed;
 }
 
 // ============================================================

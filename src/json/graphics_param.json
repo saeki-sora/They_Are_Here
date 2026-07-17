@@ -1,0 +1,29 @@
+{
+  "BloomEnabled": true,
+  "BloomIntensity": 0.800000011920929,
+  "BloomKnee": 0.3499999940395355,
+  "BloomThreshold": 0.75,
+  "Enabled": true,
+  "Exposure": 1.1929999589920044,
+  "FXAAEnabled": true,
+  "GrainIntensity": 0.03500000014901161,
+  "NormalMapStrength": 1.0,
+  "SSAOBias": 0.02500000037252903,
+  "SSAOEnabled": true,
+  "SSAOIntensity": 1.600000023841858,
+  "SSAORadius": 35.0,
+  "Saturation": 0.9419999718666077,
+  "TintColor": [
+    0.8199999928474426,
+    0.8500000238418579,
+    1.100000023841858
+  ],
+  "TintStrength": 0.3499999940395355,
+  "TonemapBypass": false,
+  "VignetteIntensity": 0.44999998807907104,
+  "VignettePower": 1.399999976158142,
+  "VolumetricEnabled": true,
+  "VolumetricIntensity": 1.2000000476837158,
+  "VolumetricMaxDist": 1200.0,
+  "VolumetricSteps": 20
+}

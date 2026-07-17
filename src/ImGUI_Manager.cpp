@@ -408,12 +408,14 @@ static void DrawArrow(ImDrawList* dl, ImVec2 a, ImVec2 b, float nodeR, ImU32 col
 
     dl->AddLine(from, to, color, 1.5f);
 
-    // 矢印の先端を描画
+    // 矢印の先端を描画（進行方向を軸に左右対称になる2枚の羽根を描く）
     float headLen = 8.0f;
     float ax =  nx * headLen * 0.866f + ny * headLen * 0.5f;
     float ay = -nx * headLen * 0.5f   + ny * headLen * 0.866f;
+    float bx =  nx * headLen * 0.866f - ny * headLen * 0.5f;
+    float by =  nx * headLen * 0.5f   + ny * headLen * 0.866f;
     dl->AddLine(to, ImVec2(to.x - ax, to.y - ay), color, 1.5f);
-    dl->AddLine(to, ImVec2(to.x - ay, to.y + ax), color, 1.5f);
+    dl->AddLine(to, ImVec2(to.x - bx, to.y - by), color, 1.5f);
 }
 
 // ============================================================

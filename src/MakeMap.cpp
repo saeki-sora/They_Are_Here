@@ -828,6 +828,10 @@ void MakeMap::DestroyWall(int x, int y)
     if (x < 0 || y < 0 || x >= m_SizeX || y >= m_SizeY) return;
     if (MAP[x][y] == 0) return;
     MAP[x][y] = 0;
+
+    // クリアランスマップは壁配置を基に生成した距離キャッシュなので、
+    // 壁を壊したらこのセルの安全距離が古いまま(0)になり敵が通れなくなる。再計算して更新する。
+    CalculateClearance();
 }
 
 

@@ -639,20 +639,23 @@ void PostProcessManager::DrawImGui()
 
 	ImGui::Separator();
 
+	// 保存・読み込み完了メッセージの表示期限（BeginPopupは外側クリックしないと消えないため、
+	// 一定時間で自動的に消えるタイマー表示に変更している）
+	static double s_SaveMsgUntil = 0.0;
+	static double s_LoadMsgUntil = 0.0;
+	const double MESSAGE_DURATION = 1.5;
+
 	// 現在の設定をJSONファイルに保存
 	if (ImGui::Button("JSONに保存", ImVec2(-1, 0)))
 	{
 		SaveSettings(GRAPHICS_SETTINGS_PATH);
-		ImGui::OpenPopup("graphics_saved_popup");
+		s_SaveMsgUntil = ImGui::GetTime() + MESSAGE_DURATION;
 	}
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("現在の値を graphics_param.json に書き込む");
 
-	if (ImGui::BeginPopup("graphics_saved_popup"))
-	{
+	if (ImGui::GetTime() < s_SaveMsgUntil)
 		ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "graphics_param.json に保存しました");
-		ImGui::EndPopup();
-	}
 
 	ImGui::Spacing();
 
@@ -660,14 +663,11 @@ void PostProcessManager::DrawImGui()
 	if (ImGui::Button("JSONを読み込む", ImVec2(-1, 0)))
 	{
 		LoadSettings(GRAPHICS_SETTINGS_PATH);
-		ImGui::OpenPopup("graphics_loaded_popup");
+		s_LoadMsgUntil = ImGui::GetTime() + MESSAGE_DURATION;
 	}
 	if (ImGui::IsItemHovered())
 		ImGui::SetTooltip("graphics_param.json から値を再読み込みする");
 
-	if (ImGui::BeginPopup("graphics_loaded_popup"))
-	{
+	if (ImGui::GetTime() < s_LoadMsgUntil)
 		ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "graphics_param.json から読み込みました");
-		ImGui::EndPopup();
-	}
 }

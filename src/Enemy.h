@@ -69,7 +69,6 @@ public:
 	// パスをクリアしてその場で停止する
 	void ClearPath();
 
-
 	static void ResetPathCalculationCount();// 今フレームのパス計算数をリセットする
 
 	// JSONからパラメータを再読み込みして即座に反映する（ImGuiのApplyボタンから呼ばれる）
